@@ -408,12 +408,13 @@ export function isValidOperationHistory(body: IBirthCompositionBody) {
   }
 
   const previousStatus = getPreviousStatus(body)
-  const currentStatus = body.type
+  const currentStatus = body.type as keyof typeof validStatusMapping
 
   if (
     currentStatus &&
     validStatusMapping[currentStatus] &&
-    !validStatusMapping[currentStatus].includes(previousStatus)
+    // @todo fix types
+    !validStatusMapping[currentStatus].includes(previousStatus as never)
   ) {
     return false
   }
