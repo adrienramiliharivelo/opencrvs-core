@@ -27,6 +27,7 @@ import {
 } from '@client/notification/actions'
 import { IStoreState } from '@client/store'
 import {
+  addCorrectionDetails,
   appendGqlMetadataFromDraft,
   draftToGqlTransformer
 } from '@client/transformer'
@@ -48,6 +49,7 @@ import { captureException } from '@sentry/browser'
 import { getOfflineData } from '@client/offline/selectors'
 import { IOfflineData } from '@client/offline/reducer'
 import { MutationToRequestRegistrationCorrectionArgs } from '@opencrvs/gateway/src/graphql/schema'
+import { UserDetails } from '@client/utils/userUtils'
 
 type IReadyDeclaration = IDeclaration & {
   action: SubmissionAction
@@ -77,13 +79,14 @@ const STATUS_CHANGE_MAP = {
 function getGqlDetails(
   form: IForm,
   draft: IDeclaration,
-  offlineData: IOfflineData
+  offlineData: IOfflineData,
+  userDetails: UserDetails | null
 ) {
   const gqlDetails = draftToGqlTransformer(
     form,
     draft.data,
     draft.id,
-    draft.originalData,
+    userDetails,
     offlineData
   )
   appendGqlMetadataFromDraft(draft, gqlDetails)
@@ -104,6 +107,15 @@ function updateWorkqueue(store: IStoreState, dispatch: Dispatch) {
     systemRole && FIELD_AGENT_ROLES.includes(systemRole) ? true : false
   const userId = store.offline.userDetails?.practitionerId
   dispatch(updateRegistrarWorkqueue(userId, 10, isFieldAgent))
+}
+
+function isCorrectionAction(action: SubmissionAction) {
+  return [
+    SubmissionAction.REQUEST_CORRECTION,
+    SubmissionAction.MAKE_CORRECTION,
+    SubmissionAction.APPROVE_CORRECTION,
+    SubmissionAction.REJECT_CORRECTION
+  ].includes(action)
 }
 
 async function removeDuplicatesFromCompositionAndElastic(
@@ -153,11 +165,23 @@ export const submissionMiddleware: Middleware<{}, IStoreState> =
       }
     }
 
-    const gqlDetails = getGqlDetails(
+    const form = getRegisterForm(getState())[event]
+    const offlineData = getOfflineData(getState())
+    let graphqlPayload = getGqlDetails(
       getRegisterForm(getState())[event],
       declaration,
-      getOfflineData(getState())
+      getOfflineData(getState()),
+      getState().offline.userDetails as UserDetails
     )
+
+    if (isCorrectionAction(submissionAction)) {
+      graphqlPayload = addCorrectionDetails(
+        form,
+        declaration,
+        graphqlPayload,
+        offlineData
+      )
+    }
 
     //then add payment while issue declaration
     if (payments) {
@@ -184,7 +208,7 @@ export const submissionMiddleware: Middleware<{}, IStoreState> =
         const response = await client.mutate({
           mutation,
           variables: {
-            details: gqlDetails
+            details: graphqlPayload
           }
         })
 
@@ -209,7 +233,7 @@ export const submissionMiddleware: Middleware<{}, IStoreState> =
           mutation,
           variables: {
             id: declaration.id,
-            details: gqlDetails.registration.correction
+            details: graphqlPayload.registration.correction
           }
         })
       } else if (
@@ -244,7 +268,7 @@ export const submissionMiddleware: Middleware<{}, IStoreState> =
           mutation,
           variables: {
             id: declaration.id,
-            details: gqlDetails
+            details: graphqlPayload
           }
         })
         //delete data from certificates to identify event in workflow for markEventAsIssued
@@ -265,7 +289,7 @@ export const submissionMiddleware: Middleware<{}, IStoreState> =
           mutation,
           variables: {
             id: declaration.id,
-            details: gqlDetails
+            details: graphqlPayload
           }
         })
       }

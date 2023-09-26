@@ -219,9 +219,11 @@ export const STATUSTOCOLOR: { [key: string]: string } = {
 const ARCHIVABLE_STATUSES = [IN_PROGRESS, DECLARED, VALIDATED, REJECTED]
 
 function ReinstateButton({
-  toggleDisplayDialog
+  toggleDisplayDialog,
+  refetchDeclarationInfo
 }: {
   toggleDisplayDialog: () => void
+  refetchDeclarationInfo?: () => void
 }) {
   const { declarationId } = useParams<{ declarationId: string }>()
   const intl = useIntl()
@@ -245,20 +247,15 @@ function ReinstateButton({
           ? REINSTATE_BIRTH_DECLARATION
           : REINSTATE_DEATH_DECLARATION
       }
-      refetchQueries={[
-        {
-          query: FETCH_DECLARATION_SHORT_INFO,
-          variables: { id: declaration.id }
-        }
-      ]}
-      onCompleted={() =>
+      onCompleted={() => {
+        refetchDeclarationInfo?.()
         dispatch(
           modifyDeclaration({
             ...declaration,
             submissionStatus: ''
           })
         )
-      }
+      }}
     >
       {(reinstateDeclaration) => (
         <PrimaryButton
@@ -297,6 +294,7 @@ function RecordAuditBody({
   goToPage,
   goToHomeTab,
   scope,
+  refetchDeclarationInfo,
   userDetails,
   registerForm,
   goToUserProfile,
@@ -312,6 +310,7 @@ function RecordAuditBody({
   userDetails: UserDetails | null
   registerForm: IRegisterFormState
   offlineData: Partial<IOfflineData>
+  refetchDeclarationInfo?: () => void
   tab: IRecordAuditTabs
 } & IDispatchProps) {
   const [showDialog, setShowDialog] = React.useState(false)
@@ -434,8 +433,11 @@ function RecordAuditBody({
   }
 
   if (
-    (declaration.status === SUBMISSION_STATUS.DECLARED ||
-      declaration.status === SUBMISSION_STATUS.VALIDATED) &&
+    [
+      SUBMISSION_STATUS.DECLARED,
+      SUBMISSION_STATUS.VALIDATED,
+      SUBMISSION_STATUS.CORRECTION_REQUESTED
+    ].includes(declaration.status as SUBMISSION_STATUS) &&
     userDetails?.systemRole &&
     !FIELD_AGENT_ROLES.includes(userDetails.systemRole)
   ) {
@@ -664,7 +666,10 @@ function RecordAuditBody({
             {intl.formatMessage(buttonMessages.cancel)}
           </TertiaryButton>,
           declaration.status && ARCHIVED.includes(declaration.status) ? (
-            <ReinstateButton toggleDisplayDialog={toggleDisplayDialog} />
+            <ReinstateButton
+              toggleDisplayDialog={toggleDisplayDialog}
+              refetchDeclarationInfo={refetchDeclarationInfo}
+            />
           ) : (
             <DangerButton
               id="archive_confirm"
@@ -719,7 +724,7 @@ const BodyContent = ({
           variables={{
             id: declarationId
           }}
-          fetchPolicy="cache-and-network"
+          fetchPolicy="no-cache"
         >
           {({ loading, error, data, refetch }) => {
             if (loading) {
@@ -771,6 +776,7 @@ const BodyContent = ({
                 tab={tab}
                 draft={draft}
                 duplicates={getPotentialDuplicateIds(data.fetchRegistration)}
+                refetchDeclarationInfo={refetch}
                 intl={intl}
                 scope={scope}
                 userDetails={userDetails}

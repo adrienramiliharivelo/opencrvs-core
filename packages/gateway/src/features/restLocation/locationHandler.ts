@@ -132,6 +132,10 @@ export const updateSchema = Joi.object({
   statistics: locationStatisticSchema.optional()
 })
 
+export const requestParamsSchema = Joi.object({
+  locationId: Joi.string()
+})
+
 export async function fetchLocationHandler(
   request: Hapi.Request,
   h: Hapi.ResponseToolkit
