@@ -40,8 +40,8 @@ import { IAuthHeader } from '@opencrvs/commons'
 import * as fetchMock from 'jest-fetch-mock'
 import { Extension, isTask } from '@opencrvs/commons/types'
 import {
-  GQLAttachmentStatus,
-  GQLBirthRegistrationInput
+  GQLBirthRegistrationInput,
+  GQLAttachmentInputStatus
 } from '@gateway/graphql/schema'
 
 const fetch = fetchMock as fetchMock.FetchMock
@@ -163,7 +163,7 @@ test('should build a minimal FHIR registration document without error', async ()
             _fhirID: '8f18a6ea-89d1-4b03-80b3-57509a7eebce22',
             contentType: 'image/png',
             data: 'ExampleData',
-            status: GQLAttachmentStatus.AMENDED,
+            status: GQLAttachmentInputStatus.approved,
             originalFileName: 'original.png',
             systemFileName: 'system.png',
             type: 'PASSPORT',
