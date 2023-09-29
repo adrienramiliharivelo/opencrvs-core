@@ -56,6 +56,7 @@ import { Context } from '@gateway/graphql/context'
 import PatientAPI from '@gateway/features/fhir/patientAPI'
 import MinioAPI from '@gateway/features/fhir/minioAPI'
 import { getAuthHeader } from '@opencrvs/commons'
+import { UsersAPI } from '@gateway/features/user/usersAPI'
 
 const graphQLSchemaPath = `${__dirname}/schema.graphql`
 
@@ -180,6 +181,7 @@ export const getApolloConfig = (): Config<Context> => {
       documentsAPI: new DocumentsAPI(),
       paymentsAPI: new PaymentsAPI(),
       locationsAPI: new LocationsAPI(),
+      usersAPI: new UsersAPI(),
       practitionerRoleAPI: new PractitionerRoleAPI(),
       patientAPI: new PatientAPI(),
       minioAPI: new MinioAPI()

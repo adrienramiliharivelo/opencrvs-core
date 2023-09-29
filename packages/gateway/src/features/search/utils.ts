@@ -13,7 +13,7 @@
 import { SEARCH_URL } from '@gateway/constants'
 import { GQLAdvancedSearchParametersInput } from '@gateway/graphql/schema'
 import { IAuthHeader } from '@opencrvs/commons'
-import fetch from 'node-fetch'
+import fetch from '@gateway/fetch'
 
 export interface ISearchCriteria {
   parameters: GQLAdvancedSearchParametersInput

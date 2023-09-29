@@ -9,7 +9,7 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
-import fetch from 'node-fetch'
+import fetch from '@gateway/fetch'
 import { DOCUMENTS_URL } from '@gateway/constants'
 import { internal } from '@hapi/boom'
 import { logger } from '@gateway/logger'

@@ -10,6 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 // eslint-disable-next-line import/no-relative-parent-imports
+import { getResourceFromBundleById } from '@opencrvs/commons/types'
 import { FHIR_URL } from '../../constants'
 import { RequestOptions, RESTDataSource } from 'apollo-datasource-rest'
 
@@ -29,6 +30,13 @@ export default class LocationsAPI extends RESTDataSource {
   }
 
   getLocation(id: string) {
+    if (this.context.record) {
+      const inBundle = getResourceFromBundleById(this.context.record, id)
+      if (inBundle) {
+        return inBundle
+      }
+    }
+
     return this.get(`/${id}`)
   }
 }

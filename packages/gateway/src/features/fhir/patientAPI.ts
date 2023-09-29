@@ -10,6 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 // eslint-disable-next-line import/no-relative-parent-imports
+import { getResourceFromBundleById } from '@opencrvs/commons/types'
 import { FHIR_URL } from '../../constants'
 import { RequestOptions, RESTDataSource } from 'apollo-datasource-rest'
 
@@ -29,6 +30,12 @@ export default class PatientAPI extends RESTDataSource {
   }
 
   getPatient(id: string) {
+    const inBundle = getResourceFromBundleById(this.context.record, id)
+
+    if (inBundle) {
+      return { entry: [{ resource: inBundle }] }
+    }
+
     return this.get(`/${id}`)
   }
 }
