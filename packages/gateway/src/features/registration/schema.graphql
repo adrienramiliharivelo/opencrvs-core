@@ -455,7 +455,6 @@ input AttachmentInput {
   # base64
   data: String
   uri: String
-  # approved/validated/deleted
   status: AttachmentInputStatus
   originalFileName: String
   systemFileName: String
@@ -463,6 +462,12 @@ input AttachmentInput {
   description: String # -> use for other document type -> .description
   subject: String
   createdAt: Date
+}
+
+enum AttachmentInputStatus {
+  approved
+  validated
+  deleted
 }
 
 type QuestionnaireQuestion {

@@ -40,8 +40,8 @@ import { IAuthHeader } from '@opencrvs/commons'
 import * as fetchMock from 'jest-fetch-mock'
 import { Extension, isTask } from '@opencrvs/commons/types'
 import {
-  GQLBirthRegistrationInput,
-  GQLAttachmentInputStatus
+  GQLAttachmentInputStatus,
+  GQLBirthRegistrationInput
 } from '@gateway/graphql/schema'
 
 const fetch = fetchMock as fetchMock.FetchMock
@@ -785,7 +785,7 @@ test('should update a task document as rejected', async () => {
   )
 })
 
-test.only('creates task with contact other relationship', async () => {
+test('creates task with contact other relationship', async () => {
   fetch.mockResponse(
     JSON.stringify({
       refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'

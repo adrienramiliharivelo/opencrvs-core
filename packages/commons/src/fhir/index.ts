@@ -117,13 +117,12 @@ export type Composition = Omit<fhir3.Composition, 'relatesTo' | 'section'> & {
 export type SavedComposition = Omit<Composition, 'section'> & {
   section: Array<SavedCompositionSection>
 }
-
 export type DocumentReference = WithStrictExtensions<
-  Omit<fhir3.DocumentReference, 'indexed' | 'docStatus'>
-> & {
-  indexed?: string
-  docStatus?: 'validated' | 'approved' | 'deleted'
-}
+  Saved<Omit<fhir3.DocumentReference, 'indexed' | 'docStatus'>> & {
+    indexed?: string
+    docStatus?: 'validated' | 'approved' | 'deleted'
+  }
+>
 
 export type RelatedPerson = Omit<fhir3.RelatedPerson, 'patient'> & {
   patient: {

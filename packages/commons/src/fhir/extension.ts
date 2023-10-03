@@ -15,7 +15,11 @@ export type StringExtensionType = {
   }
   'http://opencrvs.org/specs/extension/age': {
     url: 'http://opencrvs.org/specs/extension/age'
-    valueString: string
+    /**
+     * @deprecated The field should not be used!
+     */
+    valueString?: string
+    valueInteger: number
   }
   'http://opencrvs.org/specs/extension/patient-occupation': {
     url: 'http://opencrvs.org/specs/extension/patient-occupation'
@@ -117,7 +121,7 @@ export type StringExtensionType = {
     url: 'http://opencrvs.org/specs/extension/regLastOffice'
     valueReference: { reference: string }
     /**
-     * @deprecated The field should not be used!
+     * Human readable office name
      */
     valueString?: string
   }
@@ -217,33 +221,28 @@ export type KnownExtensionType = StringExtensionType & {
         }
     >
   }
-  code: {
-    url: 'code'
-    valueCodeableConcept: {
-      coding: [{ system: string; code: string }]
-    }
-  }
-  period: {
-    url: 'period'
-    valuePeriod: {
-      start: string
-      end: string
-    }
-  }
 }
 export type StringExtension = { url: string; valueString: string }
 export type Extension = KnownExtensionType[keyof KnownExtensionType]
+
+type NestedExtensionTypes = Extract<
+  Extension,
+  { extension: any }
+>['extension'][number]
+
+type AllExtensions =
+  | KnownExtensionType[keyof KnownExtensionType]
+  | NestedExtensionTypes
+
 export type StringValueExtension =
   StringExtensionType[keyof StringExtensionType]
 
-export function findExtension<
-  T extends keyof ExtensionSet,
-  ExtensionSet extends Record<string, any> = KnownExtensionType
->(
-  url: T,
-  extensions: Array<ExtensionSet[keyof ExtensionSet]>
-): ExtensionSet[T] | undefined {
-  return extensions.find((obj: Extension): obj is ExtensionSet[T] => {
-    return obj.url === url
-  })
+export function findExtension<URL extends AllExtensions['url']>(
+  url: URL,
+  listOfExtensions: AllExtensions[]
+): Extract<AllExtensions, { url: URL }> | undefined {
+  return listOfExtensions.find(
+    (extension): extension is Extract<AllExtensions, { url: URL }> =>
+      extension.url === url
+  )
 }
