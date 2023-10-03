@@ -1019,6 +1019,9 @@ export const builders: IFieldBuilders = {
       const encounter = selectOrCreateEncounterResource(fhirBundle, context)
       encounter.id = fieldValue as string
     },
+    eventLocation: (fhirBundle, fieldValue) => {
+      return false
+    },
     observation: {
       maleDependentsOfDeceased: (fhirBundle, fieldValue, context) => {
         const observation = selectOrCreateObservationResource(
