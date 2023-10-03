@@ -127,7 +127,6 @@ import {
   markSaved,
   replaceFromBundle
 } from '@opencrvs/commons/types'
-import { v4 as uuid } from 'uuid'
 
 type StringReplace<
   T extends string,

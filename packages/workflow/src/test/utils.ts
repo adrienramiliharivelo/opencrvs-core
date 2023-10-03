@@ -717,7 +717,7 @@ export const testFhirTaskBundle: Saved<Bundle<Task>> = {
           },
           {
             url: 'http://opencrvs.org/specs/extension/regLastUser',
-            valueReference: { reference: 'DUMMY' }
+            valueReference: { reference: 'DUMMY' as ResourceIdentifier }
           }
         ],
         note: [
