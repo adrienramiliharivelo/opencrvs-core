@@ -79,6 +79,20 @@ export type Saved<T extends Resource | BundleEntry | Bundle> =
     ? SavedResource<T>
     : never
 
+/*
+ * A placeholder until someone writes better with Zod
+ */
+export function validateBundle(bundle: unknown): bundle is Bundle {
+  if (typeof bundle !== 'object' || bundle === null) {
+    throw new Error('Bundle must be an object')
+  }
+  if (!('entry' in bundle) || !Array.isArray(bundle.entry)) {
+    throw new Error('Bundle must have an entry list')
+  }
+
+  return true
+}
+
 export type BundleEntry<T extends Resource = Resource> = Omit<
   fhir3.BundleEntry<T>,
   'resource' | 'fullUrl'

@@ -9,22 +9,35 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
+import * as Hapi from '@hapi/hapi'
+import {
+  Bundle,
+  Composition,
+  isTask,
+  validateBundle
+} from '@opencrvs/commons/types'
 import { OPENHIM_URL } from '@workflow/constants'
 import { isUserAuthorized } from '@workflow/features/events/auth'
+import { Events } from '@workflow/features/events/utils'
 import { OPENCRVS_SPECIFICATION_URL } from '@workflow/features/registration/fhir/constants'
 import {
-  hasRegistrationNumber,
+  invokeRegistrationValidation,
+  setupSystemIdentifier
+} from '@workflow/features/registration/fhir/fhir-bundle-modifier'
+import { getTaskResourceFromFhirBundle } from '@workflow/features/registration/fhir/fhir-template'
+import {
+  forwardEntriesToHearth,
   forwardToHearth,
-  forwardEntriesToHearth
+  hasRegistrationNumber
 } from '@workflow/features/registration/fhir/fhir-utils'
 import {
-  createRegistrationHandler,
-  markEventAsCertifiedHandler,
-  markEventAsValidatedHandler,
-  markEventAsWaitingValidationHandler,
   actionEventHandler,
   anonymousActionEventHandler,
-  markEventAsIssuedHandler
+  createRegistrationHandler,
+  markEventAsCertifiedHandler,
+  markEventAsIssuedHandler,
+  markEventAsValidatedHandler,
+  markEventAsWaitingValidationHandler
 } from '@workflow/features/registration/handler'
 import {
   getEventType,
@@ -33,9 +46,19 @@ import {
   isInProgressDeclaration
 } from '@workflow/features/registration/utils'
 import {
+  ASSIGNED_EXTENSION_URL,
+  DOWNLOADED_EXTENSION_URL,
+  MARKED_AS_DUPLICATE,
+  MARKED_AS_NOT_DUPLICATE,
+  REINSTATED_EXTENSION_URL,
+  UNASSIGNED_EXTENSION_URL,
+  VERIFIED_EXTENSION_URL,
+  VIEWED_EXTENSION_URL
+} from '@workflow/features/task/fhir/constants'
+import {
   hasExtension,
-  isRejectedTask,
-  isArchiveTask
+  isArchiveTask,
+  isRejectedTask
 } from '@workflow/features/task/fhir/utils'
 import updateTaskHandler from '@workflow/features/task/handler'
 import { logger } from '@workflow/logger'
@@ -44,25 +67,7 @@ import {
   hasRegisterScope,
   hasValidateScope
 } from '@workflow/utils/authUtils'
-import * as Hapi from '@hapi/hapi'
 import fetch from 'node-fetch'
-import {
-  ASSIGNED_EXTENSION_URL,
-  DOWNLOADED_EXTENSION_URL,
-  UNASSIGNED_EXTENSION_URL,
-  REINSTATED_EXTENSION_URL,
-  VIEWED_EXTENSION_URL,
-  MARKED_AS_NOT_DUPLICATE,
-  MARKED_AS_DUPLICATE,
-  VERIFIED_EXTENSION_URL
-} from '@workflow/features/task/fhir/constants'
-import {
-  invokeRegistrationValidation,
-  setupSystemIdentifier
-} from '@workflow/features/registration/fhir/fhir-bundle-modifier'
-import { Events } from '@workflow/features/events/utils'
-import { Bundle, Composition, isTask } from '@opencrvs/commons/types'
-import { getTaskResourceFromFhirBundle } from '@workflow/features/registration/fhir/fhir-template'
 
 function detectEvent(request: Hapi.Request): Events {
   const fhirBundle = request.payload as Bundle
@@ -70,6 +75,8 @@ function detectEvent(request: Hapi.Request): Events {
     request.method === 'post' &&
     (request.path === '/fhir' || request.path === '/fhir/')
   ) {
+    validateBundle(request.payload)
+
     const firstEntry = fhirBundle.entry?.[0]?.resource
     if (firstEntry) {
       const isNewEntry = !firstEntry.id
@@ -140,6 +147,8 @@ function detectEvent(request: Hapi.Request): Events {
   }
 
   if (request.method === 'put' && request.path.includes('/fhir/Task')) {
+    validateBundle(request.payload)
+
     const taskResource = getTaskResourceFromFhirBundle(fhirBundle)
 
     if (hasExtension(taskResource, ASSIGNED_EXTENSION_URL)) {
@@ -183,7 +192,12 @@ export async function fhirWorkflowEventHandler(
   request: Hapi.Request,
   h: Hapi.ResponseToolkit
 ) {
-  const event = detectEvent(request)
+  let event: Events
+  try {
+    event = detectEvent(request)
+  } catch (error) {
+    return h.response().code(400)
+  }
 
   logger.info(`Event detected: ${event}`)
   // Unknown event are allowed through to Hearth by default.
