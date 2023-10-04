@@ -6,8 +6,7 @@
  * OpenCRVS is also distributed under the terms of the Civil Registration
  * & Healthcare Disclaimer located at http://opencrvs.org/license.
  *
- * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
- * graphic logo are (registered/a) trademark(s) of Plan International.
+ * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { readFileSync } from 'fs'
@@ -2122,7 +2121,12 @@ describe('populateCompositionWithID', () => {
           resource: {
             resourceType: 'Patient',
             active: true,
-            identifier: [{ value: '123456789', type: 'NATIONAL_ID' }],
+            identifier: [
+              {
+                value: '123456789',
+                type: { coding: [{ code: 'NATIONAL_ID' }] }
+              }
+            ],
             name: [{ use: 'en', family: ['Rahman'] }],
             maritalStatus: {
               coding: [
@@ -2232,7 +2236,7 @@ describe('populateCompositionWithID', () => {
           fullUrl: 'urn:uuid:e29c9d7c-261c-4a9b-8797-b902866bf9ad',
           resource: {
             resourceType: 'Observation',
-            status: 'final',
+            status: 'registered',
             context: {
               reference: 'urn:uuid:16f054d9-1a3c-4fd1-b151-9c3222f84cfd'
             },
