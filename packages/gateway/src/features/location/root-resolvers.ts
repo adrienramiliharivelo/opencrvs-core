@@ -11,7 +11,7 @@
  */
 
 import { GQLResolver } from '@gateway/graphql/schema'
-import { fetchFHIR } from '@gateway/features/fhir/utils'
+import { fetchFHIR } from '@gateway/features/fhir/service'
 
 export const resolvers: GQLResolver = {
   Query: {

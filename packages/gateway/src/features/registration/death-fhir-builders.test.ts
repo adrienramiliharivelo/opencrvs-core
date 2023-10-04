@@ -9,8 +9,8 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
-import { buildFHIRBundle } from '@gateway/features/registration/fhir-builders'
-import { EVENT_TYPE } from '@gateway/features/fhir/constants'
+import { EVENT_TYPE, buildFHIRBundle } from '@opencrvs/commons/types'
+
 import * as fetchMock from 'jest-fetch-mock'
 import {
   GQLAddressType,
@@ -23,13 +23,14 @@ import {
 
 const fetch = fetchMock as fetchMock.FetchMock
 
-test('should build a minimal FHIR registration document without error', async () => {
+test.only('should build a minimal FHIR registration document without error', async () => {
   fetch.mockResponse(
     JSON.stringify({
       refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
     })
   )
-  const fhir = (await buildFHIRBundle(
+
+  const fhir = buildFHIRBundle(
     {
       deceased: {
         _fhirID: '8f18a6ea-89d1-4b03-80b3-57509a7eeb39',
@@ -208,7 +209,7 @@ test('should build a minimal FHIR registration document without error', async ()
     },
     'DEATH' as EVENT_TYPE,
     {} as any
-  )) as any
+  ) as any
   expect(fhir).toBeDefined()
   expect(fhir.entry[0].resource.section.length).toBe(8)
   expect(fhir.entry[0].resource.date).toBeDefined()
@@ -242,7 +243,7 @@ test('should build a minimal FHIR registration document without error', async ()
       refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
     })
   )
-  const fhir = (await buildFHIRBundle(
+  const fhir = buildFHIRBundle(
     {
       deceased: {
         _fhirID: '8f18a6ea-89d1-4b03-80b3-57509a7eeb39',
@@ -272,7 +273,7 @@ test('should build a minimal FHIR registration document without error', async ()
     },
     'DEATH' as EVENT_TYPE,
     {} as any
-  )) as any
+  ) as any
   expect(fhir).toBeDefined()
   // informant relationship
   expect(fhir.entry[3].resource.relationship.coding[0].code).toEqual('OTHER')

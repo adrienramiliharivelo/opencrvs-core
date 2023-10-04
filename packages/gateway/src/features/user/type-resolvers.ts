@@ -10,8 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import { IAuthHeader } from '@opencrvs/commons'
-import { OPENCRVS_SPECIFICATION_URL } from '@gateway/features/fhir/constants'
-import { fetchFHIR, findExtension } from '@gateway/features/fhir/utils'
+
 import {
   GQLIdentifier,
   GQLResolver,
@@ -21,9 +20,12 @@ import {
 import {
   Bundle,
   Extension,
+  OPENCRVS_SPECIFICATION_URL,
   Practitioner,
-  PractitionerRole
+  PractitionerRole,
+  findExtension
 } from '@opencrvs/commons/types'
+import { fetchFHIR } from '../fhir/service'
 
 interface IAuditHistory {
   auditedBy: string

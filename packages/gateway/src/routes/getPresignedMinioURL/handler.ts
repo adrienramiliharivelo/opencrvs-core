@@ -10,7 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import * as Hapi from '@hapi/hapi'
-import { fetchDocuments } from '@gateway/features/fhir/utils'
+import { fetchDocuments } from '@gateway/features/documents/service'
 
 export async function getPresignedMinioURLHandler(
   request: Hapi.Request,

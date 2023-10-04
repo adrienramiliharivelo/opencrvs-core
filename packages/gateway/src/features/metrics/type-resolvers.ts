@@ -10,7 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import { GQLResolver, GQLVSExport } from '@gateway/graphql/schema'
-import { fetchFHIR } from '@gateway/features/fhir/utils'
+import { fetchFHIR } from '@gateway/features/fhir/service'
 import { FILTER_BY } from '@gateway/features/metrics/root-resolvers'
 import { USER_MANAGEMENT_URL } from '@gateway/constants'
 import fetch from '@gateway/fetch'

@@ -10,37 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import { IAuthHeader } from '@opencrvs/commons'
-import {
-  EVENT_TYPE,
-  DOWNLOADED_EXTENSION_URL,
-  REINSTATED_EXTENSION_URL,
-  ASSIGNED_EXTENSION_URL,
-  UNASSIGNED_EXTENSION_URL,
-  MAKE_CORRECTION_EXTENSION_URL,
-  VIEWED_EXTENSION_URL,
-  OPENCRVS_SPECIFICATION_URL,
-  MARKED_AS_NOT_DUPLICATE,
-  MARKED_AS_DUPLICATE,
-  DUPLICATE_TRACKING_ID,
-  VERIFIED_EXTENSION_URL,
-  FLAGGED_AS_POTENTIAL_DUPLICATE
-} from '@gateway/features/fhir/constants'
-import {
-  fetchFHIR,
-  getDeclarationIdsFromResponse,
-  getIDFromResponse,
-  getCompositionIdFromResponse,
-  removeDuplicatesFromComposition,
-  getDeclarationIds,
-  getStatusFromTask,
-  setCertificateCollector
-} from '@gateway/features/fhir/utils'
-import {
-  buildFHIRBundle,
-  updateFHIRTaskBundle,
-  checkUserAssignment,
-  taskBundleWithExtension
-} from '@gateway/features/registration/fhir-builders'
+
 import { hasScope, inScope } from '@gateway/features/user/utils'
 import {
   GQLBirthRegistrationInput,
@@ -63,16 +33,38 @@ import {
   Bundle,
   BundleEntry,
   Composition,
+  EVENT_TYPE,
   Extension,
   Patient,
   Saved,
   Task,
+  buildFHIRBundle,
+  updateFHIRTaskBundle,
   getTaskFromBundle,
   isComposition,
   isTask,
-  resourceToBundleEntry
+  resourceToBundleEntry,
+  taskBundleWithExtension,
+  OPENCRVS_SPECIFICATION_URL,
+  getStatusFromTask,
+  TaskStatus,
+  getComposition
 } from '@opencrvs/commons/types'
+
 import { getRecordById } from '@gateway/search'
+import {
+  fetchFHIR,
+  getCompositionIdFromResponse,
+  getDeclarationIds,
+  getDeclarationIdsFromResponse,
+  getIDFromResponse
+} from '@gateway/features/fhir/service'
+import { checkUserAssignment } from '@gateway/authorisation'
+import {
+  removeDuplicatesFromComposition,
+  setCertificateCollector
+} from './utils'
+import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
 
 async function getAnonymousToken() {
   const res = await fetch(new URL('/anonymous-token', AUTH_URL).toString())
@@ -264,7 +256,7 @@ export const resolvers: GQLResolver = {
       const taskEntry = resourceToBundleEntry(getTaskFromBundle(context.record))
 
       const taskBundle = taskBundleWithExtension(taskEntry, {
-        url: VIEWED_EXTENSION_URL
+        url: 'http://opencrvs.org/specs/extension/regViewed'
       })
 
       fetchFHIR('/Task', context.headers, 'PUT', JSON.stringify(taskBundle))
@@ -391,7 +383,7 @@ export const resolvers: GQLResolver = {
         const taskEntry = await getTaskEntry(id, authHeader)
 
         const taskBundle = taskBundleWithExtension(taskEntry, {
-          url: VERIFIED_EXTENSION_URL,
+          url: 'http://opencrvs.org/specs/extension/regVerified',
           valueString: headers['x-real-ip']!
         })
         await fetchFHIR('/Task', authHeader, 'PUT', JSON.stringify(taskBundle))
@@ -632,7 +624,7 @@ export const resolvers: GQLResolver = {
 
       taskEntry.resource.extension = [
         ...(taskEntry.resource.extension ?? []),
-        { url: REINSTATED_EXTENSION_URL }
+        { url: `${OPENCRVS_SPECIFICATION_URL}extension/regReinstated` }
       ]
 
       const newTaskBundle = await updateFHIRTaskBundle(taskEntry, prevRegStatus)
@@ -713,7 +705,9 @@ export const resolvers: GQLResolver = {
 
         const taskEntry = await getTaskEntry(id, authHeader)
 
-        const extension = { url: MARKED_AS_NOT_DUPLICATE }
+        const extension = {
+          url: `${OPENCRVS_SPECIFICATION_URL}extension/markedAsNotDuplicate` as const
+        }
         const taskBundle = taskBundleWithExtension(taskEntry, extension)
         const payloadBundle: Bundle = {
           ...taskBundle,
@@ -740,7 +734,7 @@ export const resolvers: GQLResolver = {
       }
       const taskEntry = await getTaskEntry(id, authHeader)
       const taskBundle = taskBundleWithExtension(taskEntry, {
-        url: UNASSIGNED_EXTENSION_URL
+        url: `${OPENCRVS_SPECIFICATION_URL}extension/regUnassigned` as const
       })
 
       await fetchFHIR('/Task', authHeader, 'PUT', JSON.stringify(taskBundle))
@@ -765,7 +759,7 @@ export const resolvers: GQLResolver = {
 
       const taskEntry = await getTaskEntry(id, authHeader)
       const extension = {
-        url: MARKED_AS_DUPLICATE,
+        url: `${OPENCRVS_SPECIFICATION_URL}extension/markedAsDuplicate` as const,
         valueString: duplicateTrackingId
       }
 
@@ -799,6 +793,32 @@ async function createEventRegistration(
   event: EVENT_TYPE
 ) {
   const doc = await buildFHIRBundle(details, event, authHeader)
+
+  let isADuplicate = false
+  if (event === EVENT_TYPE.BIRTH) {
+    isADuplicate = await hasBirthDuplicates(
+      authHeader,
+      details as GQLBirthRegistrationInput
+    )
+  } else if (event === EVENT_TYPE.DEATH) {
+    isADuplicate = await hasDeathDuplicates(
+      authHeader,
+      details as GQLDeathRegistrationInput
+    )
+  }
+
+  const composition = getComposition(doc)
+  const hasBeenFlaggedAsDuplicate = composition.extension?.find(
+    (x) => x.url === `${OPENCRVS_SPECIFICATION_URL}duplicate`
+  )
+  if (isADuplicate && !hasBeenFlaggedAsDuplicate) {
+    composition.extension = composition.extension || []
+    composition.extension.push({
+      url: `${OPENCRVS_SPECIFICATION_URL}duplicate`,
+      valueBoolean: true
+    })
+  }
+
   const draftId =
     details && details.registration && details.registration.draftId
 
@@ -930,18 +950,18 @@ async function markEventAsIssued(
   return getIDFromResponse(res)
 }
 
-const ACTION_EXTENSIONS = [
-  ASSIGNED_EXTENSION_URL,
-  VERIFIED_EXTENSION_URL,
-  UNASSIGNED_EXTENSION_URL,
-  DOWNLOADED_EXTENSION_URL,
-  REINSTATED_EXTENSION_URL,
-  MAKE_CORRECTION_EXTENSION_URL,
-  VIEWED_EXTENSION_URL,
-  MARKED_AS_NOT_DUPLICATE,
-  MARKED_AS_DUPLICATE,
-  DUPLICATE_TRACKING_ID,
-  FLAGGED_AS_POTENTIAL_DUPLICATE
+const ACTION_EXTENSIONS: Extension['url'][] = [
+  'http://opencrvs.org/specs/extension/regAssigned',
+  'http://opencrvs.org/specs/extension/regVerified',
+  'http://opencrvs.org/specs/extension/regUnassigned',
+  'http://opencrvs.org/specs/extension/regDownloaded',
+  'http://opencrvs.org/specs/extension/regReinstated',
+  'http://opencrvs.org/specs/extension/makeCorrection',
+  'http://opencrvs.org/specs/extension/regViewed',
+  'http://opencrvs.org/specs/extension/markedAsNotDuplicate',
+  'http://opencrvs.org/specs/extension/markedAsDuplicate',
+  'http://opencrvs.org/specs/extension/duplicateTrackingId',
+  'http://opencrvs.org/specs/extension/flaggedAsPotentialDuplicate'
 ]
 
 type ACTION_EXTENSION_TYPE = typeof ACTION_EXTENSIONS
@@ -970,18 +990,18 @@ async function getTaskEntry(compositionId: string, authHeader: IAuthHeader) {
 
 function getDownloadedOrAssignedExtension(
   authHeader: IAuthHeader,
-  status: GQLRegStatus
+  status: TaskStatus
 ): Extension {
   if (
     inScope(authHeader, ['declare', 'recordsearch']) ||
-    (hasScope(authHeader, 'validate') && status === GQLRegStatus.VALIDATED)
+    (hasScope(authHeader, 'validate') && status === TaskStatus.VALIDATED)
   ) {
     return {
-      url: DOWNLOADED_EXTENSION_URL
+      url: `${OPENCRVS_SPECIFICATION_URL}extension/regDownloaded`
     }
   }
   return {
-    url: ASSIGNED_EXTENSION_URL
+    url: `${OPENCRVS_SPECIFICATION_URL}extension/regAssigned`
   }
 }
 

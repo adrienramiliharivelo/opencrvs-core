@@ -17,6 +17,7 @@ import { IDatabaseConnector } from '../src/features/user/database'
 const f = jest.requireActual('node-fetch')
 
 jest.setMock('node-fetch', { default: fetch, Headers: f.Headers })
+jest.setMock('@opencrvs/commons/monitoring')
 
 const database: { [key: string]: string } = {}
 

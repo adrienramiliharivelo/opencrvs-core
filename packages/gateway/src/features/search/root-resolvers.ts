@@ -10,7 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import { ApiResponse } from '@elastic/elasticsearch'
-import { getMetrics, postMetrics } from '@gateway/features/fhir/utils'
+import { getMetrics, postMetrics } from '@gateway/features/metrics/service'
 import { markRecordAsDownloadedOrAssigned } from '@gateway/features/registration/root-resolvers'
 import {
   getSystem,

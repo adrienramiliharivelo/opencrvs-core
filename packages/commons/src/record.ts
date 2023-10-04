@@ -21,6 +21,12 @@ import {
 } from './fhir'
 import { NestedNominal, Nominal } from './nominal'
 
+export enum EVENT_TYPE {
+  BIRTH = 'BIRTH',
+  DEATH = 'DEATH',
+  MARRIAGE = 'MARRIAGE'
+}
+
 type RecordBase = Bundle
 export type WaitingForValidationRecord = Nominal<
   RecordBase,

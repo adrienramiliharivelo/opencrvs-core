@@ -15,6 +15,7 @@ import {
   Composition,
   Patient,
   Practitioner,
+  RegistrationNumber,
   Saved,
   Task,
   findExtension
@@ -267,7 +268,7 @@ export async function markEventAsRegistered(
   if (taskResource && taskResource.identifier) {
     taskResource.identifier.push({
       system: system,
-      value: registrationNumber
+      value: registrationNumber as RegistrationNumber
     })
   }
 

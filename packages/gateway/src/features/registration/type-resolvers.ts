@@ -9,88 +9,73 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
+
+import { getPresignedUrlFromUri } from '@gateway/features/registration/utils'
+import { getSignatureExtension } from '@gateway/features/user/type-resolvers'
+
+import { GQLQuestionnaireQuestion, GQLResolver } from '@gateway/graphql/schema'
 import {
-  DUPLICATE_TRACKING_ID,
-  FHIR_SPECIFICATION_URL,
-  FLAGGED_AS_POTENTIAL_DUPLICATE,
-  HAS_SHOWED_VERIFIED_DOCUMENT,
-  NO_SUPPORTING_DOCUMENTATION_REQUIRED,
-  OPENCRVS_SPECIFICATION_URL,
-  ORIGINAL_FILE_NAME_SYSTEM,
-  PAYMENT_DETAILS,
-  REQUESTING_INDIVIDUAL,
-  REQUESTING_INDIVIDUAL_OTHER,
-  SYSTEM_FILE_NAME_SYSTEM
-} from '@gateway/features/fhir/constants'
-import {
+  ATTACHMENT_DOCS_CODE,
   BIRTH_ATTENDANT_CODE,
   BIRTH_ENCOUNTER_CODE,
   BIRTH_TYPE_CODE,
   BODY_WEIGHT_CODE,
+  BRIDE_CODE,
+  Bundle,
   CAUSE_OF_DEATH_CODE,
   CAUSE_OF_DEATH_ESTABLISHED_CODE,
   CAUSE_OF_DEATH_METHOD_CODE,
-  DEATH_DESCRIPTION_CODE,
-  DEATH_ENCOUNTER_CODE,
-  FEMALE_DEPENDENTS_ON_DECEASED_CODE,
-  LAST_LIVE_BIRTH_CODE,
-  MALE_DEPENDENTS_ON_DECEASED_CODE,
-  MANNER_OF_DEATH_CODE,
-  MARRIAGE_ENCOUNTER_CODE,
-  MARRIAGE_TYPE_CODE,
-  NUMBER_BORN_ALIVE_CODE,
-  NUMBER_FOEATAL_DEATH_CODE
-} from '@gateway/features/fhir/templates'
-import {
-  ITimeLoggedResponse,
-  fetchTaskByCompositionIdFromHearth,
-  findExtension,
-  getActionFromTask,
-  getCertificatesFromTask,
-  getStatusFromTask,
-  getTimeLoggedFromMetrics
-} from '@gateway/features/fhir/utils'
-import { SignatureExtensionPostfix } from '@gateway/features/registration/fhir-builders'
-import { getPresignedUrlFromUri } from '@gateway/features/registration/utils'
-import { getSignatureExtension } from '@gateway/features/user/type-resolvers'
-
-import {
-  GQLQuestionnaireQuestion,
-  GQLRegStatus,
-  GQLResolver
-} from '@gateway/graphql/schema'
-import {
-  ATTACHMENT_DOCS_CODE,
-  BRIDE_CODE,
-  Bundle,
   CHILD_CODE,
   Coding,
+  DEATH_DESCRIPTION_CODE,
+  DEATH_ENCOUNTER_CODE,
   DECEASED_CODE,
+  DUPLICATE_TRACKING_ID,
   DocumentReference,
   EncounterParticipant,
   Extension,
   FATHER_CODE,
+  FEMALE_DEPENDENTS_ON_DECEASED_CODE,
+  FHIR_SPECIFICATION_URL,
+  FLAGGED_AS_POTENTIAL_DUPLICATE,
   GROOM_CODE,
   INFORMANT_CODE,
   Identifier,
+  LAST_LIVE_BIRTH_CODE,
   Location,
+  MALE_DEPENDENTS_ON_DECEASED_CODE,
+  MANNER_OF_DEATH_CODE,
+  MARRIAGE_ENCOUNTER_CODE,
+  MARRIAGE_TYPE_CODE,
   MOTHER_CODE,
+  NO_SUPPORTING_DOCUMENTATION_REQUIRED,
+  NUMBER_BORN_ALIVE_CODE,
+  NUMBER_FOEATAL_DEATH_CODE,
+  OPENCRVS_SPECIFICATION_URL,
+  ORIGINAL_FILE_NAME_SYSTEM,
   Patient,
   PaymentReconciliation,
   Practitioner,
+  REQUESTING_INDIVIDUAL,
+  REQUESTING_INDIVIDUAL_OTHER,
   RelatedPerson,
   ResourceIdentifier,
   SPOUSE_CODE,
+  SYSTEM_FILE_NAME_SYSTEM,
   Saved,
   Task,
+  TaskStatus,
   ValidRecord,
   WITNESS_ONE_CODE,
   WITNESS_TWO_CODE,
   findCompositionSection,
+  findExtension,
   findObservationByCode,
+  getActionFromTask,
   getComposition,
   getEncounterFromRecord,
   getResourceFromBundleById,
+  getStatusFromTask,
   getTaskFromBundle,
   isDocumentReference,
   isObservation,
@@ -102,6 +87,14 @@ import {
   urlReferenceToUUID
 } from '@opencrvs/commons/types'
 
+import {
+  fetchTaskByCompositionIdFromHearth,
+  getCertificatesFromTask
+} from '@gateway/features/fhir/service'
+import {
+  ITimeLoggedResponse,
+  getTimeLoggedFromMetrics
+} from '@gateway/features/metrics/service'
 import * as validateUUID from 'uuid-validate'
 
 function findRelatedPerson(
@@ -159,7 +152,7 @@ function findPatient(
   }
 }
 
-export const typeResolvers: GQLResolver = {
+export const typeResolvers = {
   EventRegistration: {
     __resolveType(record: Saved<ValidRecord>) {
       const composition = getComposition(record)
@@ -762,7 +755,7 @@ export const typeResolvers: GQLResolver = {
     },
     informantsSignature: async (task, _, { headers: authHeader }) => {
       const signatureExtension = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.INFORMANT}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/informants-signature`,
         task.extension
       )
       if (signatureExtension && signatureExtension.valueString) {
@@ -775,14 +768,14 @@ export const typeResolvers: GQLResolver = {
     },
     informantsSignatureURI: (task) => {
       const contact = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.INFORMANT}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/informants-signature`,
         task.extension
       )
       return (contact && contact.valueString) || null
     },
     groomSignature: async (task, _, { headers: authHeader }) => {
       const signatureExtension = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.GROOM}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/groom-signature`,
         task.extension
       )
       if (signatureExtension && signatureExtension.valueString) {
@@ -795,14 +788,14 @@ export const typeResolvers: GQLResolver = {
     },
     groomSignatureURI: (task) => {
       const contact = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.GROOM}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/groom-signature`,
         task.extension
       )
       return (contact && contact.valueString) || null
     },
     brideSignature: async (task, _, { headers: authHeader }) => {
       const signatureExtension = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.BRIDE}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/bride-signature`,
         task.extension
       )
       if (signatureExtension && signatureExtension.valueString) {
@@ -815,14 +808,14 @@ export const typeResolvers: GQLResolver = {
     },
     brideSignatureURI: (task) => {
       const contact = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.BRIDE}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/bride-signature`,
         task.extension
       )
       return (contact && contact.valueString) || null
     },
     witnessOneSignature: async (task, _, { headers: authHeader }) => {
       const signatureExtension = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.WITNESS_ONE}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/witness-one-signature`,
         task.extension
       )
       if (signatureExtension && signatureExtension.valueString) {
@@ -835,14 +828,14 @@ export const typeResolvers: GQLResolver = {
     },
     witnessOneSignatureURI: (task) => {
       const contact = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.WITNESS_ONE}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/witness-one-signature`,
         task.extension
       )
       return (contact && contact.valueString) || null
     },
     witnessTwoSignature: async (task, _, { headers: authHeader }) => {
       const signatureExtension = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.WITNESS_TWO}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/witness-two-signature`,
         task.extension
       )
       if (signatureExtension && signatureExtension.valueString) {
@@ -855,7 +848,7 @@ export const typeResolvers: GQLResolver = {
     },
     witnessTwoSignatureURI: (task) => {
       const contact = findExtension(
-        `${OPENCRVS_SPECIFICATION_URL}extension/${SignatureExtensionPostfix.WITNESS_TWO}`,
+        `${OPENCRVS_SPECIFICATION_URL}extension/witness-two-signature`,
         task.extension
       )
       return (contact && contact.valueString) || null
@@ -1150,7 +1143,7 @@ export const typeResolvers: GQLResolver = {
     },
     async hasShowedVerifiedDocument(docRef: DocumentReference, _) {
       const hasShowedDocument = findExtension(
-        HAS_SHOWED_VERIFIED_DOCUMENT,
+        `${OPENCRVS_SPECIFICATION_URL}extension/hasShowedVerifiedDocument`,
         docRef.extension as Extension[]
       )
 
@@ -1260,7 +1253,7 @@ export const typeResolvers: GQLResolver = {
     },
     payment: async (task: Task, _, context) => {
       const includesPayment = findExtension(
-        PAYMENT_DETAILS,
+        `${OPENCRVS_SPECIFICATION_URL}extension/paymentDetails`,
         task.extension as Extension[]
       )
 
@@ -1308,7 +1301,7 @@ export const typeResolvers: GQLResolver = {
     },
     hasShowedVerifiedDocument: (task: Task) => {
       const hasShowedDocument = findExtension(
-        HAS_SHOWED_VERIFIED_DOCUMENT,
+        `${OPENCRVS_SPECIFICATION_URL}extension/hasShowedVerifiedDocument`,
         task.extension as Extension[]
       )
 
@@ -1466,7 +1459,7 @@ export const typeResolvers: GQLResolver = {
     certificates: async (task, _, { headers: authHeader }) => {
       if (
         getActionFromTask(task) ||
-        getStatusFromTask(task) !== GQLRegStatus.CERTIFIED
+        getStatusFromTask(task) !== TaskStatus.CERTIFIED
       ) {
         return null
       }
@@ -1477,8 +1470,7 @@ export const typeResolvers: GQLResolver = {
       const status = getStatusFromTask(task)
       if (
         action ||
-        (status !== GQLRegStatus.REGISTERED &&
-          status !== GQLRegStatus.VALIDATED)
+        (status !== TaskStatus.REGISTERED && status !== TaskStatus.VALIDATED)
       ) {
         return null
       }
@@ -1955,4 +1947,4 @@ export const typeResolvers: GQLResolver = {
         )
     }
   }
-}
+} satisfies GQLResolver

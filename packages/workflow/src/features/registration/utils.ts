@@ -41,12 +41,14 @@ import {
 } from './smsNotificationUtils'
 import {
   Bundle,
+  BundleEntry,
   Composition,
   DocumentReference,
   Patient,
   Resource,
   Saved,
-  Task
+  Task,
+  TrackingID
 } from '@opencrvs/commons/types'
 import { MAKE_CORRECTION_EXTENSION_URL } from '@workflow/features/task/fhir/constants'
 import { getTaskResourceFromFhirBundle } from './fhir/fhir-template'
@@ -70,10 +72,10 @@ export enum FHIR_RESOURCE_TYPE {
   PATIENT = 'Patient'
 }
 
-export function generateTrackingIdForEvents(eventType: EVENT_TYPE): string {
+export function generateTrackingIdForEvents(eventType: EVENT_TYPE): TrackingID {
   // using first letter of eventType for prefix
   // TODO: for divorce, need to think about prefix as Death & Divorce prefix is same 'D'
-  return generateTrackingId(eventType.charAt(0))
+  return generateTrackingId(eventType.charAt(0)) as TrackingID
 }
 
 function generateTrackingId(prefix: string): string {
@@ -452,13 +454,14 @@ export function isInProgressDeclaration(fhirBundle: Bundle) {
     fhirBundle &&
     fhirBundle.entry &&
     fhirBundle.entry.find(
-      (entry) => entry.resource && entry.resource.resourceType === 'Task'
+      (entry): entry is BundleEntry<Task> =>
+        entry.resource && entry.resource.resourceType === 'Task'
     )
 
   return (
     (taskEntry &&
       taskEntry.resource &&
-      (taskEntry.resource as Task).status === 'draft') ||
+      taskEntry.resource.status === 'draft') ||
     false
   )
 }

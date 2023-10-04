@@ -10,12 +10,14 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 import { readFileSync } from 'fs'
-import * as fetch from 'jest-fetch-mock'
 import * as jwt from 'jsonwebtoken'
 import { getApolloConfig } from './config'
 import { cloneDeep } from 'lodash'
 import { ContextFunction } from 'apollo-server-core'
 import { ApolloServer } from 'apollo-server-hapi'
+
+import * as fetchAny from 'jest-fetch-mock'
+const fetch = fetchAny as fetchAny.FetchMock
 
 describe('Test apollo server config', () => {
   const token = jwt.sign(

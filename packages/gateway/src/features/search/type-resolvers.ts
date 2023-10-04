@@ -19,11 +19,12 @@ import {
   GQLOperationHistorySearchSet,
   GQLResolver
 } from '@gateway/graphql/schema'
-import {
-  getEventDurationsFromMetrics,
-  IEventDurationResponse
-} from '@gateway/features/fhir/utils'
+
 import { getPresignedUrlFromUri } from '@gateway/features/registration/utils'
+import {
+  IEventDurationResponse,
+  getEventDurationsFromMetrics
+} from '../metrics/service'
 
 interface ISearchEventDataTemplate {
   _type: string

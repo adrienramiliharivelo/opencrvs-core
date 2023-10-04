@@ -9,18 +9,8 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
-import {
-  buildFHIRBundle,
-  updateFHIRTaskBundle,
-  taskBundleWithExtension,
-  checkUserAssignment
-} from '@gateway/features/registration/fhir-builders'
-import {
-  FHIR_SPECIFICATION_URL,
-  OPENCRVS_SPECIFICATION_URL,
-  FHIR_OBSERVATION_CATEGORY_URL,
-  EVENT_TYPE
-} from '@gateway/features/fhir/constants'
+import { buildFHIRBundle } from '.'
+
 import {
   BIRTH_TYPE_CODE,
   BODY_WEIGHT_CODE,
@@ -28,28 +18,106 @@ import {
   NUMBER_BORN_ALIVE_CODE,
   NUMBER_FOEATAL_DEATH_CODE,
   LAST_LIVE_BIRTH_CODE
-} from '@gateway/features/fhir/templates'
+} from './templates'
 import * as _ from 'lodash'
-import { mockTask } from '@gateway/utils/testUtils'
-import { findExtension } from '@gateway/features/fhir/utils'
-import { readFileSync } from 'fs'
-import * as jwt from 'jsonwebtoken'
 
-import { IAuthHeader } from '@opencrvs/commons'
+import {
+  findExtension,
+  Extension,
+  isTask,
+  TrackingID,
+  ResourceIdentifier,
+  URLReference,
+  FHIR_SPECIFICATION_URL,
+  OPENCRVS_SPECIFICATION_URL,
+  FHIR_OBSERVATION_CATEGORY_URL,
+  updateFHIRTaskBundle,
+  taskBundleWithExtension
+} from '..'
 
 import * as fetchMock from 'jest-fetch-mock'
-import { Extension, isTask } from '@opencrvs/commons/types'
-import {
-  GQLAttachmentInputStatus,
-  GQLBirthRegistrationInput
-} from '@gateway/graphql/schema'
+import { EVENT_TYPE } from 'src/record'
 
 const fetch = fetchMock as fetchMock.FetchMock
-type AuthHeader = { Authorization?: string } & IAuthHeader
+
+export const mockTask = {
+  resourceType: 'Task',
+  status: 'ready',
+  intent: '',
+  identifier: [
+    {
+      system: 'http://opencrvs.org/specs/id/birth-tracking-id',
+      value: '123'
+    },
+    {
+      system: 'http://opencrvs.org/specs/id/birth-registration-number',
+      value: '123'
+    },
+    { system: 'http://opencrvs.org/specs/id/paper-form-id', value: '123' },
+    { system: 'http://opencrvs.org/specs/id/paper-form-page', value: '123' },
+    { system: 'http://opencrvs.org/specs/id/paper-form-book', value: '123' }
+  ],
+  businessStatus: {
+    coding: [
+      {
+        system: 'http://opencrvs.org/specs/reg-status',
+        code: 'DECLARED | VERIFIED | REGISTERED | CERTIFIED'
+      }
+    ]
+  },
+  code: {
+    coding: [
+      {
+        system: 'http://opencrvs.org/specs/types',
+        code: 'BIRTH'
+      }
+    ]
+  },
+  focus: {
+    reference: 'Composition/123' // the composition encompassing this registration
+  },
+  authoredOn: '2016-10-31T08:25:05+10:00',
+  lastModified: '2016-10-31T09:45:05+10:00',
+  note: [
+    {
+      authorString: 'Practitioner/12121212',
+      text: 'Comment',
+      time: '2016-10-31T09:45:05+10:00'
+    }
+  ],
+  extension: [
+    {
+      url: 'http://opencrvs.org/specs/extension/regLastUser',
+      valueReference: { reference: 'Practitioner/123' }
+    },
+    {
+      url: 'http://opencrvs.org/specs/extension/regLastLocation',
+      valueReference: { reference: 'Location/123' }
+    },
+    {
+      url: 'http://opencrvs.org/specs/extension/regLastOffice',
+      valueReference: {
+        reference: 'Location/43ac3486-7df1-4bd9-9b5e-728054ccd6ba'
+      }
+    },
+    {
+      url: 'http://opencrvs.org/specs/extension/contact-person',
+      valueString: 'MOTHER'
+    },
+    {
+      url: 'http://opencrvs.org/specs/extension/contact-person-phone-number',
+      valueString: '01733333333'
+    }
+  ],
+  meta: {
+    versionId: '123'
+  }
+}
+
 test('should build a minimal FHIR registration document without error', async () => {
   fetch.mockResponse(
     JSON.stringify({
-      refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
+      refUrl: 'data:image/png;base64,2324256'
     })
   )
   const fhir: any = await buildFHIRBundle(
@@ -153,7 +221,7 @@ test('should build a minimal FHIR registration document without error', async ()
             _fhirID: '8f18a6ea-89d1-4b03-80b3-57509a7eebce11',
             contentType: 'image/jpeg',
             data: 'SampleData',
-            status: 'final',
+            status: 'validated',
             originalFileName: 'original.jpg',
             systemFileName: 'system.jpg',
             type: 'NATIONAL_ID',
@@ -163,7 +231,7 @@ test('should build a minimal FHIR registration document without error', async ()
             _fhirID: '8f18a6ea-89d1-4b03-80b3-57509a7eebce22',
             contentType: 'image/png',
             data: 'ExampleData',
-            status: GQLAttachmentInputStatus.approved,
+            status: 'approved',
             originalFileName: 'original.png',
             systemFileName: 'system.png',
             type: 'PASSPORT',
@@ -238,7 +306,7 @@ test('should build a minimal FHIR registration document without error', async ()
             '8f18a6ea-89d1-4b03-80b3-57509a7eebce-dsa23324lsdafk'
         }
       }
-    } as GQLBirthRegistrationInput,
+    },
     'BIRTH' as EVENT_TYPE,
     {} as any
   )
@@ -414,7 +482,7 @@ test('should build a minimal FHIR registration document without error', async ()
   expect(fhir.entry[6].resource.id).toBe(
     '8f18a6ea-89d1-4b03-80b3-57509a7eebce11'
   )
-  expect(fhir.entry[6].resource.docStatus).toBe('final')
+  expect(fhir.entry[6].resource.docStatus).toBe('validated')
   expect(fhir.entry[6].resource.created).toBe('2018-10-21')
   expect(fhir.entry[6].resource.type).toEqual({
     coding: [
@@ -445,7 +513,7 @@ test('should build a minimal FHIR registration document without error', async ()
   expect(fhir.entry[7].resource.id).toBe(
     '8f18a6ea-89d1-4b03-80b3-57509a7eebce22'
   )
-  expect(fhir.entry[7].resource.docStatus).toBe('amended')
+  expect(fhir.entry[7].resource.docStatus).toBe('approved')
   expect(fhir.entry[7].resource.created).toBe('2018-10-22')
   expect(fhir.entry[7].resource.type).toEqual({
     coding: [
@@ -509,7 +577,7 @@ test('should build a minimal FHIR registration document without error', async ()
     {
       attachment: {
         contentType: 'application/pdf',
-        data: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
+        data: 'data:image/png;base64,2324256'
       }
     }
   ])
@@ -520,7 +588,7 @@ test('should build a minimal FHIR registration document without error', async ()
       url: 'http://opencrvs.org/specs/extension/relatedperson-affidavittype',
       valueAttachment: {
         contentType: 'image/jpg',
-        data: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
+        data: 'data:image/png;base64,2324256'
       }
     }
   ])
@@ -721,13 +789,13 @@ test('should build a minimal FHIR registration document without error', async ()
 test('should update a task document as rejected', async () => {
   fetch.mockResponse(
     JSON.stringify({
-      refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
+      refUrl: 'data:image/png;base64,2324256'
     })
   )
   const fhir: any = await updateFHIRTaskBundle(
     {
       fullUrl:
-        'http://localhost:3447/fhir/Task/ba0412c6-5125-4447-bd32-fb5cf336ddbc',
+        'http://localhost:3447/fhir/Task/ba0412c6-5125-4447-bd32-fb5cf336ddbc' as URLReference,
       resource: {
         resourceType: 'Task',
         intent: 'order',
@@ -742,7 +810,7 @@ test('should update a task document as rejected', async () => {
           },
           {
             url: 'http://opencrvs.org/specs/extension/regLastUser',
-            valueReference: { reference: 'DUMMY' }
+            valueReference: { reference: 'DUMMY' as ResourceIdentifier }
           }
         ],
         lastModified: '2018-11-28T15:13:57.492Z',
@@ -755,7 +823,7 @@ test('should update a task document as rejected', async () => {
         identifier: [
           {
             system: 'http://opencrvs.org/specs/id/birth-tracking-id',
-            value: 'B1mW7jA'
+            value: 'B1mW7jA' as TrackingID
           }
         ],
         businessStatus: {
@@ -788,7 +856,7 @@ test('should update a task document as rejected', async () => {
 test('creates task with contact other relationship', async () => {
   fetch.mockResponse(
     JSON.stringify({
-      refUrl: '/ocrvs/3d3623fa-333d-11ed-a261-0242ac120002.png'
+      refUrl: 'data:image/png;base64,2324256'
     })
   )
   const simpleFhir = await buildFHIRBundle(
@@ -910,50 +978,5 @@ describe('taskBundleWithExtension()', () => {
       'valueString',
       'mock-value'
     )
-  })
-})
-
-describe('checkUserAssignment()', () => {
-  const fetch = fetchMock as fetchMock.FetchMock
-  const registerCertifyToken = jwt.sign(
-    { scope: ['register', 'certify'] },
-    readFileSync('../auth/test/cert.key'),
-    {
-      subject: '121221',
-      algorithm: 'RS256',
-      issuer: 'opencrvs:auth-service',
-      audience: 'opencrvs:gateway-user'
-    }
-  )
-  const authHeaderRegCert: AuthHeader = {
-    Authorization: `Bearer ${registerCertifyToken}`
-  }
-  it('should return true if user is assigned on task', async () => {
-    fetch.mockResponseOnce(JSON.stringify({ userId: '121221' }))
-    const bundle = await checkUserAssignment(
-      '5d027bc403b93b17526323f6',
-      authHeaderRegCert
-    )
-    expect(bundle).toBe(true)
-  })
-
-  it('should return false if user is not assigned on task', async () => {
-    fetch.mockResponseOnce(JSON.stringify({ userId: '123456' }))
-    const bundle = await checkUserAssignment(
-      '5d027bc403b93b17526323f6',
-      authHeaderRegCert
-    )
-    expect(bundle).toBe(false)
-  })
-
-  it('should return false if authHeader has no Authorization', async () => {
-    fetch.mockResponse(JSON.stringify({ userId: '121221' }))
-    //@ts-ignore
-    delete authHeaderRegCert.Authorization
-    const bundle = await checkUserAssignment(
-      '5d027bc403b93b17526323f6',
-      authHeaderRegCert
-    )
-    expect(bundle).toBe(false)
   })
 })

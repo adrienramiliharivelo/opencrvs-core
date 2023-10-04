@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-relative-parent-imports
 
-import { ValidRecord } from 'src/record'
+import { ValidRecord } from '../record'
 import { Nominal } from '../nominal'
 import { UUID } from '../uuid'
 import { Encounter, SavedEncounter } from './encounter'
@@ -16,6 +16,16 @@ export * from './observation'
 export * from './encounter'
 export * from './patient'
 export * from './composition'
+
+export const OPENCRVS_SPECIFICATION_URL = 'http://opencrvs.org/specs/'
+export const FHIR_SPECIFICATION_URL = 'http://hl7.org/fhir/StructureDefinition/'
+export const ORIGINAL_FILE_NAME_SYSTEM =
+  'http://opencrvs.org/specs/id/original-file-name'
+export const SYSTEM_FILE_NAME_SYSTEM =
+  'http://opencrvs.org/specs/id/system-file-name'
+
+export const FHIR_OBSERVATION_CATEGORY_URL =
+  'http://hl7.org/fhir/observation-category'
 
 export type Resource = fhir3.Resource
 
@@ -225,7 +235,7 @@ type ItemType<T> = T extends Array<infer U> ? U : never
 export type TelecomSystem = ItemType<Patient['telecom']>['system']
 export type CodeableConcept = fhir3.CodeableConcept
 
-export function markSaved<T extends Resource>(resource: T, id: UUID) {
+export function markSaved<T extends Resource>(resource: T, id: UUID | string) {
   return {
     ...resource,
     id
@@ -297,3 +307,5 @@ export function resourceToBundleEntry<T extends Resource>(
     fullUrl: `urn:uuid:${resource.id as UUID}`
   }
 }
+
+export { updateFHIRBundle, buildFHIRBundle } from './transformers'

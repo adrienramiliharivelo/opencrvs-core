@@ -9,7 +9,7 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
-import { fetchFromHearth, sendToFhir } from '@gateway/features/fhir/utils'
+import { fetchFromHearth, sendToFhir } from '@gateway/features/fhir/service'
 import * as Hapi from '@hapi/hapi'
 import { badRequest, conflict } from '@hapi/boom'
 import * as Joi from 'joi'

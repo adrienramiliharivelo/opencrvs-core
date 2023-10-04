@@ -27,7 +27,7 @@
     "build",
     "scripts",
     "acceptance-tests",
-    "src/setupTests.ts",
-    "src/**/*.test.ts"
+    "src/setupTests.ts"
+    // "src/**/*.test.ts"
   ]
 }

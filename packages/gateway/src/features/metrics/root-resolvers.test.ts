@@ -9,14 +9,15 @@
  * Copyright (C) The OpenCRVS Authors. OpenCRVS and the OpenCRVS
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
-import { resolvers } from '@gateway/features/metrics/root-resolvers'
+import { resolvers as typeResolvers } from '@gateway/features/metrics/root-resolvers'
 import * as fetchAny from 'jest-fetch-mock'
+import { TestResolvers } from '@gateway/utils/testUtils'
+const resolvers = typeResolvers as unknown as TestResolvers
 
 const fetch = fetchAny as any
 beforeEach(() => {
   fetch.resetMocks()
 })
-
 describe('get total metrics', () => {
   it('returns estimated data for event', async () => {
     fetch.mockResponseOnce(

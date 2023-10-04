@@ -10,8 +10,7 @@
  * graphic logo are (registered/a) trademark(s) of Plan International.
  */
 
-import { OPENCRVS_SPECIFICATION_URL } from '@gateway/features/fhir/constants'
-import { fetchFromHearth } from '@gateway/features/fhir/utils'
+import { fetchFromHearth } from '@gateway/features/fhir/service'
 import {
   ExtensionUrl,
   Facility as FacilityInput,
@@ -20,7 +19,12 @@ import {
   LocationStatistic,
   Statistics
 } from './locationHandler'
-import { Location, Extension, Bundle } from '@opencrvs/commons/types'
+import {
+  Location,
+  Extension,
+  Bundle,
+  OPENCRVS_SPECIFICATION_URL
+} from '@opencrvs/commons/types'
 
 export const composeFhirLocation = (
   location: LocationInput | FacilityInput
