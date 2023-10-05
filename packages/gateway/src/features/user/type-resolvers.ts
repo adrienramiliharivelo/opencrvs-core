@@ -8,7 +8,7 @@
  *
  * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
-import { IAuthHeader } from '@opencrvs/commons'
+import { IAuthHeader, UUID } from '@opencrvs/commons'
 
 import {
   GQLIdentifier,
@@ -20,9 +20,10 @@ import {
   Bundle,
   Extension,
   OPENCRVS_SPECIFICATION_URL,
-  Practitioner,
   PractitionerRole,
-  findExtension
+  ResourceIdentifier,
+  findExtension,
+  resourceIdentifierToUUID
 } from '@opencrvs/commons/types'
 import { fetchFHIR } from '../fhir/service'
 
@@ -145,7 +146,7 @@ async function getPractitionerByOfficeId(
   return {
     practitionerId:
       practitionerRole && practitionerRole.practitioner
-        ? practitionerRole.practitioner.reference
+        ? (practitionerRole.practitioner.reference as ResourceIdentifier)
         : undefined,
     practitionerRole: roleCode || undefined
   }
@@ -195,7 +196,7 @@ export const userTypeResolvers: GQLResolver = {
     async localRegistrar(
       userModel: IUserModelData,
       _,
-      { headers: authHeader }
+      { headers: authHeader, dataSources }
     ) {
       const scope = userModel.scope
 
@@ -206,7 +207,9 @@ export const userTypeResolvers: GQLResolver = {
       const { practitionerId, practitionerRole } = !scope.includes('register')
         ? await getPractitionerByOfficeId(userModel.primaryOfficeId, authHeader)
         : {
-            practitionerId: `Practitioner/${userModel.practitionerId}`,
+            practitionerId: `Practitioner/${
+              userModel.practitionerId as UUID
+            }` as const,
             practitionerRole: userModel.systemRole
           }
 
@@ -214,9 +217,8 @@ export const userTypeResolvers: GQLResolver = {
         return
       }
 
-      const practitioner: Practitioner = await fetchFHIR(
-        `/${practitionerId}`,
-        authHeader
+      const practitioner = await dataSources.fhirAPI.getPractitioner(
+        resourceIdentifierToUUID(practitionerId)
       )
 
       if (!practitioner) {
@@ -239,10 +241,9 @@ export const userTypeResolvers: GQLResolver = {
         }
       }
     },
-    async signature(userModel: IUserModelData, _, { headers: authHeader }) {
-      const practitioner: Practitioner = await fetchFHIR(
-        `/Practitioner/${userModel.practitionerId}`,
-        authHeader
+    async signature(userModel: IUserModelData, _, { dataSources }) {
+      const practitioner = await dataSources.fhirAPI.getPractitioner(
+        userModel.practitionerId
       )
 
       const signatureExtension = getSignatureExtension(practitioner.extension)

@@ -9,16 +9,14 @@
  * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
 
-import { IAuthHeader } from '../../auth'
-
 import { Bundle } from '..'
+import { IsNominal } from '../../nominal'
+import { EVENT_TYPE } from '../../record'
 import {
   BirthRegistration,
   DeathRegistration,
   MarriageRegistration
 } from './input'
-import { IsNominal } from '../../nominal'
-import { EVENT_TYPE } from '../../record'
 
 export type Context<A extends string | number | symbol = never> = {
   event: EVENT_TYPE

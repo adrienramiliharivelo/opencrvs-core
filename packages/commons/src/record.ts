@@ -14,6 +14,7 @@ import {
   Resource,
   Task,
   getBusinessStatus,
+  getComposition,
   getTaskFromBundle,
   isCorrectionRequestedTask,
   isTask,
@@ -25,6 +26,23 @@ export enum EVENT_TYPE {
   BIRTH = 'BIRTH',
   DEATH = 'DEATH',
   MARRIAGE = 'MARRIAGE'
+}
+
+export function getEventLabelFromBundle(bundle: Bundle) {
+  const composition = getComposition(bundle)
+  if (
+    composition.type.coding?.[0].code === 'birth-declaration' ||
+    composition.type.coding?.[0].code === 'birth-notification'
+  ) {
+    return 'BirthRegistration'
+  } else if (
+    composition.type.coding?.[0].code === 'death-declaration' ||
+    composition.type.coding?.[0].code === 'death-notification'
+  ) {
+    return 'DeathRegistration'
+  } else {
+    return 'MarriageRegistration'
+  }
 }
 
 type RecordBase = Bundle

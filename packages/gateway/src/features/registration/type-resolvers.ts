@@ -73,6 +73,7 @@ import {
   getActionFromTask,
   getComposition,
   getEncounterFromRecord,
+  getEventLabelFromBundle,
   getResourceFromBundleById,
   getStatusFromTask,
   getTaskFromBundle,
@@ -90,10 +91,6 @@ import {
   fetchTaskByCompositionIdFromHearth,
   getCertificatesFromTask
 } from '@gateway/features/fhir/service'
-import {
-  ITimeLoggedResponse,
-  getTimeLoggedFromMetrics
-} from '@gateway/features/metrics/service'
 import * as validateUUID from 'uuid-validate'
 
 function findRelatedPerson(
@@ -154,20 +151,7 @@ function findPatient(
 export const typeResolvers = {
   EventRegistration: {
     __resolveType(record: Saved<ValidRecord>) {
-      const composition = getComposition(record)
-      if (
-        composition.type.coding?.[0].code === 'birth-declaration' ||
-        composition.type.coding?.[0].code === 'birth-notification'
-      ) {
-        return 'BirthRegistration'
-      } else if (
-        composition.type.coding?.[0].code === 'death-declaration' ||
-        composition.type.coding?.[0].code === 'death-notification'
-      ) {
-        return 'DeathRegistration'
-      } else {
-        return 'MarriageRegistration'
-      }
+      return getEventLabelFromBundle(record)
     }
   },
   HumanName: {
@@ -968,8 +952,10 @@ export const typeResolvers = {
         ))
       return duplicateData
     },
-    certificates: async (task, _, { headers: authHeader }) =>
-      await getCertificatesFromTask(task, _, authHeader),
+    certificates: async (task, _, { headers: authHeader }) => {
+      // @todo get from bundle
+      return await getCertificatesFromTask(task, _, authHeader)
+    },
     assignment: async (task, _, context) => {
       const assignmentExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regAssigned`,
@@ -1034,9 +1020,11 @@ export const typeResolvers = {
       if (!taskLocation || !taskLocation.valueReference) {
         return null
       }
-      return dataSources.locationsAPI.getLocation(
+      const found = await dataSources.locationsAPI.getLocation(
         taskLocation.valueReference.reference?.split('/')[1] as string
       )
+
+      return found
     },
     office: async (task, _, { dataSources }) => {
       const taskLocation = findExtension(
@@ -1050,14 +1038,12 @@ export const typeResolvers = {
         taskLocation.valueReference.reference?.split('/')[1] as string
       )
     },
-    timeLogged: async (task, _, { headers: authHeader }) => {
+    timeLogged: async (task, _, { dataSources }) => {
       const compositionId =
         (task.focus.reference && task.focus.reference.split('/')[1]) || ''
-      const timeLoggedResponse = (await getTimeLoggedFromMetrics(
-        authHeader,
-        compositionId,
-        getStatusFromTask(task) || ''
-      )) as ITimeLoggedResponse
+      const timeLoggedResponse = await dataSources.metricsAPI.getTimeLogged(
+        compositionId
+      )
       return (timeLoggedResponse && timeLoggedResponse.timeSpentEditing) || 0
     }
   },
@@ -1162,14 +1148,14 @@ export const typeResolvers = {
     value: (identifier) => identifier.value
   },
   Location: {
-    name: (location) => location.name,
-    status: (location) => location.status,
-    identifier: (location) => location.identifier,
-    longitude: (location) => location.position.longitude,
-    latitude: (location) => location.position.latitude,
-    alias: (location) => location.alias,
-    description: (location) => location.description,
-    partOf: (location) => location.partOf.reference,
+    name: (location: Location) => location.name,
+    status: (location: Location) => location.status,
+    identifier: (location: Location) => location.identifier,
+    longitude: (location: Location) => location.position?.longitude,
+    latitude: (location: Location) => location.position?.latitude,
+    alias: (location: Location) => location.alias,
+    description: (location: Location) => location.description,
+    partOf: (location: Location) => location.partOf?.reference,
     type: (location: Location) => {
       return (
         (location.type &&
@@ -1385,16 +1371,14 @@ export const typeResolvers = {
       }
       const practitionerId = user.valueReference.reference.split('/')[1]
       const practitionerRoleBundle =
-        await dataSources.practitionerRoleAPI.getPractitionerRoleByPractitionerId(
+        await dataSources.fhirAPI.getPractitionerRoleByPractitionerId(
           practitionerId
         )
 
       const practitionerRoleId = practitionerRoleBundle.entry?.[0].resource?.id
 
       const practitionerRoleHistory =
-        await dataSources.practitionerRoleAPI.getPractionerRoleHistory(
-          practitionerRoleId
-        )
+        await dataSources.fhirAPI.getPractionerRoleHistory(practitionerRoleId)
       const result = practitionerRoleHistory.find(
         (it) =>
           it?.meta?.lastUpdated &&
