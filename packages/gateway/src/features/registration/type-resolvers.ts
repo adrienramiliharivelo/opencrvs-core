@@ -13,6 +13,7 @@ import { getPresignedUrlFromUri } from '@gateway/features/registration/utils'
 import { getSignatureExtension } from '@gateway/features/user/type-resolvers'
 
 import { GQLQuestionnaireQuestion, GQLResolver } from '@gateway/graphql/schema'
+
 import {
   ATTACHMENT_DOCS_CODE,
   BIRTH_ATTENDANT_CODE,
@@ -87,11 +88,11 @@ import {
   urlReferenceToUUID
 } from '@opencrvs/commons/types'
 
+import * as validateUUID from 'uuid-validate'
 import {
   fetchTaskByCompositionIdFromHearth,
   getCertificatesFromTask
-} from '@gateway/features/fhir/service'
-import * as validateUUID from 'uuid-validate'
+} from '../fhir/service'
 
 function findRelatedPerson(
   patientCode:
