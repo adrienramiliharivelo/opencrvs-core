@@ -50,7 +50,6 @@ import {
   getComposition
 } from '@opencrvs/commons/types'
 
-import { getRecordById } from '@gateway/search'
 import {
   fetchFHIR,
   getCompositionIdFromResponse,
@@ -65,6 +64,8 @@ import {
   uploadBase64AttachmentsToDocumentsStore
 } from './utils'
 import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
+import { getRecordById } from '@gateway/records'
+import { fhirBundleToOpenCRVSRecord } from '@gateway/records/fhir-to-opencrvs'
 
 async function getAnonymousToken() {
   const res = await fetch(new URL('/anonymous-token', AUTH_URL).toString())
@@ -153,17 +154,15 @@ export const resolvers: GQLResolver = {
         if (process.env.NODE_ENV !== 'production') {
           // eslint-disable-next-line no-console
           console.timeEnd('getRecordById')
-          console.log(
-            record.entry
-              .map(({ resource }) => resource.resourceType)
-              .reduce<Record<string, number>>((acc, curr) => {
-                acc[curr] = (acc[curr] || 0) + 1
-                return acc
-              }, {})
-          )
         }
 
         context.record = record
+        console.log(
+          await fhirBundleToOpenCRVSRecord(
+            record,
+            context.headers.Authorization
+          )
+        )
 
         return record
       } else {
