@@ -21,7 +21,6 @@ import { IsNominal } from '../../nominal'
 import { EVENT_TYPE } from '../../record'
 
 export type Context<A extends string | number | symbol = never> = {
-  authHeader: IAuthHeader
   event: EVENT_TYPE
   _index: { [Key in A]: number }
 }
