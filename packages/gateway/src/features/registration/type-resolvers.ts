@@ -737,11 +737,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    informantsSignature: async (task, _, { headers: authHeader }) => {
+    informantsSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/informants-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -757,11 +766,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    groomSignature: async (task, _, { headers: authHeader }) => {
+    groomSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/groom-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -777,11 +795,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    brideSignature: async (task, _, { headers: authHeader }) => {
+    brideSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/bride-signature`,
         task.extension
       )
+
+      if (presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -797,11 +824,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    witnessOneSignature: async (task, _, { headers: authHeader }) => {
+    witnessOneSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/witness-one-signature`,
         task.extension
       )
+
+      if (presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -817,11 +853,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    witnessTwoSignature: async (task, _, { headers: authHeader }) => {
+    witnessTwoSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/witness-two-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -1064,9 +1109,16 @@ export const typeResolvers = {
     id(docRef: DocumentReference) {
       return (docRef.masterIdentifier && docRef.masterIdentifier.value) || null
     },
-    async data(docRef: DocumentReference, _, { headers: authHeader }) {
+    async data(
+      docRef: DocumentReference,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) {
       const fileUri = docRef.content[0].attachment.data
       if (fileUri) {
+        if (!presignDocumentUrls) {
+          return fileUri
+        }
         return getPresignedUrlFromUri(fileUri, authHeader)
       }
       return null
@@ -1278,10 +1330,12 @@ export const typeResolvers = {
         date: paymentReconciliation.detail?.[0].date,
         attachmentURL:
           documentReference.length > 0
-            ? await getPresignedUrlFromUri(
-                documentReference[0].content[0].attachment.data!,
-                context.headers
-              )
+            ? context.presignDocumentUrls
+              ? await getPresignedUrlFromUri(
+                  documentReference[0].content[0].attachment.data!,
+                  context.headers
+                )
+              : documentReference[0].content[0].attachment.data!
             : null
       }
     },
