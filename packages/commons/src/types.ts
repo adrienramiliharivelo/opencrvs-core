@@ -1,4 +1,5 @@
 export * from './fhir'
+export * from './fhir/transformers/input'
 export * from './record'
 export * from './test-resources'
 export * from './nominal'

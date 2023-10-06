@@ -10,7 +10,9 @@
  */
 import { IAuthHeader } from '@opencrvs/commons'
 
+import { AUTH_URL, COUNTRY_CONFIG_URL, SEARCH_URL } from '@gateway/constants'
 import { hasScope, inScope } from '@gateway/features/user/utils'
+import fetch from '@gateway/fetch'
 import {
   GQLBirthRegistrationInput,
   GQLDeathRegistrationInput,
@@ -19,10 +21,7 @@ import {
   GQLResolver,
   GQLStatusWiseRegistrationCount
 } from '@gateway/graphql/schema'
-import fetch from '@gateway/fetch'
-import { AUTH_URL, COUNTRY_CONFIG_URL, SEARCH_URL } from '@gateway/constants'
 import { UnassignError } from '@gateway/utils/unassignError'
-import { UserInputError } from 'apollo-server-hapi'
 import {
   validateBirthDeclarationAttachments,
   validateDeathDeclarationAttachments,
@@ -34,22 +33,24 @@ import {
   Composition,
   EVENT_TYPE,
   Extension,
+  OPENCRVS_SPECIFICATION_URL,
   Patient,
   Saved,
   Task,
+  TaskStatus,
   buildFHIRBundle,
-  updateFHIRTaskBundle,
+  getComposition,
+  getStatusFromTask,
   getTaskFromBundle,
   isComposition,
   isTask,
   resourceToBundleEntry,
   taskBundleWithExtension,
-  OPENCRVS_SPECIFICATION_URL,
-  getStatusFromTask,
-  TaskStatus,
-  getComposition
+  updateFHIRTaskBundle
 } from '@opencrvs/commons/types'
+import { UserInputError } from 'apollo-server-hapi'
 
+import { checkUserAssignment } from '@gateway/authorisation'
 import {
   fetchFHIR,
   getCompositionIdFromResponse,
@@ -57,15 +58,13 @@ import {
   getDeclarationIdsFromResponse,
   getIDFromResponse
 } from '@gateway/features/fhir/service'
-import { checkUserAssignment } from '@gateway/authorisation'
+import { getRecordById } from '@gateway/records'
+import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
 import {
   removeDuplicatesFromComposition,
   setCertificateCollector,
   uploadBase64AttachmentsToDocumentsStore
 } from './utils'
-import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
-import { getRecordById } from '@gateway/records'
-import { fhirBundleToOpenCRVSRecord } from '@gateway/records/fhir-to-opencrvs'
 
 async function getAnonymousToken() {
   const res = await fetch(new URL('/anonymous-token', AUTH_URL).toString())
@@ -157,12 +156,6 @@ export const resolvers: GQLResolver = {
         }
 
         context.record = record
-        console.log(
-          await fhirBundleToOpenCRVSRecord(
-            record,
-            context.headers.Authorization
-          )
-        )
 
         return record
       } else {

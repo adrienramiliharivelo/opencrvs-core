@@ -104,7 +104,7 @@ import {
 } from '..'
 import { EVENT_TYPE, replaceFromBundle } from '../../record'
 import {
-  Address,
+  AddressInput,
   Attachment,
   BirthRegistration,
   ContactPoint,
@@ -337,7 +337,7 @@ function createPhotoBuilder(
 function createAddressBuilder(
   sectionCode: CompositionSectionCode,
   sectionTitle: string
-): IFieldBuilders<'address', Address> {
+): IFieldBuilders<'address', AddressInput> {
   return {
     use: (fhirBundle, fieldValue, context) => {
       const person = selectOrCreatePersonResource(
@@ -484,7 +484,7 @@ function createAddressBuilder(
 
 function createLocationAddressBuilder(
   sectionCode: string
-): IFieldBuilders<'address', Address> {
+): IFieldBuilders<'address', AddressInput> {
   return {
     use: (fhirBundle, fieldValue, context) => {
       const location = selectOrCreateLocationRefResource(
@@ -3330,15 +3330,13 @@ const builders: IFieldBuilders = {
   }
 }
 
-export function updateFHIRBundle(
-  existingBundle: Bundle,
+export function updateFHIRBundle<T extends Bundle>(
+  existingBundle: T,
   recordDetails: BirthRegistration | DeathRegistration | MarriageRegistration,
-  eventType: EVENT_TYPE,
-  authHeader: IAuthHeader
+  eventType: EVENT_TYPE
 ) {
   const context = {
     event: eventType,
-    authHeader: authHeader,
     _index: {}
   }
 
@@ -3347,7 +3345,7 @@ export function updateFHIRBundle(
     existingBundle,
     builders,
     context
-  )
+  ) as T
 }
 
 export function buildFHIRBundle(
