@@ -7,7 +7,7 @@ import {
 import fetch from '@gateway/fetch'
 import { Bundle } from '@opencrvs/commons/types'
 
-const createRequest = async <T = any>(
+export const createRequest = async <T = any>(
   method: 'POST' | 'GET' | 'PUT' | 'DELETE',
   path: string,
   authHeader: IAuthHeader,
