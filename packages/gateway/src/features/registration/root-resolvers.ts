@@ -40,14 +40,12 @@ import {
   buildFHIRBundle,
   updateFHIRTaskBundle,
   getTaskFromBundle,
-  isComposition,
   isTask,
   resourceToBundleEntry,
   taskBundleWithExtension,
   OPENCRVS_SPECIFICATION_URL,
   getStatusFromTask,
-  TaskStatus,
-  getComposition
+  TaskStatus
 } from '@opencrvs/commons/types'
 
 import {
@@ -63,7 +61,10 @@ import {
   setCertificateCollector,
   uploadBase64AttachmentsToDocumentsStore
 } from './utils'
-import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
+import {
+  hasBirthDuplicates,
+  hasDeathDuplicates
+} from '@gateway/features/search/service'
 import { getRecordById } from '@gateway/records'
 import { fhirBundleToOpenCRVSRecord } from '@gateway/records/fhir-to-opencrvs'
 import { createRequest } from '@gateway/workflow/index'
@@ -806,8 +807,6 @@ async function createEventRegistration(
   authHeader: IAuthHeader,
   event: EVENT_TYPE
 ) {
-  const doc = await registrationToFHIR(event, details, authHeader)
-
   let isADuplicate = false
   if (event === EVENT_TYPE.BIRTH) {
     isADuplicate = await hasBirthDuplicates(
@@ -821,16 +820,9 @@ async function createEventRegistration(
     )
   }
 
-  const composition = getComposition(doc)
-  const hasBeenFlaggedAsDuplicate = composition.extension?.find(
-    (x) => x.url === `${OPENCRVS_SPECIFICATION_URL}duplicate`
-  )
+  const hasBeenFlaggedAsDuplicate = details.duplicate
   if (isADuplicate && !hasBeenFlaggedAsDuplicate) {
-    composition.extension = composition.extension || []
-    composition.extension.push({
-      url: `${OPENCRVS_SPECIFICATION_URL}duplicate`,
-      valueBoolean: true
-    })
+    details.duplicate = true
   }
 
   const draftId =
@@ -847,34 +839,16 @@ async function createEventRegistration(
       return await getDeclarationIds(existingComposition, authHeader)
     }
   }
-  const registration = await fhirBundleToOpenCRVSRecord(
-    doc,
-    authHeader.Authorization
-  )
-  const res = await createRequest(
-    'POST',
-    'create-record',
-    authHeader,
-    registration
-  )
+
+  const res = await createRequest('POST', '/create-record', authHeader, details)
 
   /*
    * Some custom logic added here. If you are a registar and
    * we flagged the declaration as a duplicate, we push the declaration into
    * "Ready for review" queue and not ready to print.
    */
-  const hasDuplicates = Boolean(
-    doc.entry
-      .map((entry) => entry.resource)
-      .find(isComposition)
-      ?.extension?.find(
-        (ext) =>
-          ext.url === `${OPENCRVS_SPECIFICATION_URL}duplicate` &&
-          ext.valueBoolean
-      )
-  )
 
-  if (hasScope(authHeader, 'register') && !hasDuplicates) {
+  if (hasScope(authHeader, 'register') && !details.duplicate) {
     // return the registrationNumber
     return await getCompositionIdFromResponse(res, event, authHeader)
   } else {
@@ -882,7 +856,7 @@ async function createEventRegistration(
     const ids = await getDeclarationIdsFromResponse(res, authHeader)
     return {
       ...ids,
-      isPotentiallyDuplicate: hasDuplicates
+      isPotentiallyDuplicate: details.duplicate
     }
   }
 }
