@@ -1,4 +1,3 @@
-import { Nominal } from '../nominal'
 import {
   ASSIGNED_EXTENSION_URL,
   Bundle,
@@ -22,6 +21,7 @@ import {
   findExtension,
   isSaved
 } from '.'
+import { Nominal } from '../nominal'
 
 export type TrackingID = Nominal<string, 'TrackingID'>
 export type RegistrationNumber = Nominal<string, 'RegistrationNumber'>

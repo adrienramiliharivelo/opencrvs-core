@@ -8,7 +8,6 @@
  *
  * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
-import transformObj, { Context, IFieldBuilders } from './transformer'
 import { HAS_SHOWED_VERIFIED_DOCUMENT } from './constants'
 import {
   ATTACHMENT_CONTEXT_KEY,
@@ -46,6 +45,7 @@ import {
   WITNESS_TWO_TITLE,
   createCompositionTemplate
 } from './templates'
+import transformObj, { Context, IFieldBuilders } from './transformer'
 import {
   getMaritalStatusCode,
   selectOrCreateCertificateDocRefResource,
@@ -71,7 +71,6 @@ import {
   setQuestionnaireItem
 } from './utils'
 
-import { IAuthHeader, getUUID } from '../..'
 import {
   ATTACHMENT_DOCS_CODE,
   BRIDE_CODE,
@@ -102,6 +101,7 @@ import {
   getComposition,
   markSaved
 } from '..'
+import { getUUID } from '../..'
 import { EVENT_TYPE, replaceFromBundle } from '../../record'
 import {
   AddressInput,

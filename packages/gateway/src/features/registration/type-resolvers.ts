@@ -91,10 +91,7 @@ import {
 
 import { Context } from '@gateway/graphql/context'
 import * as validateUUID from 'uuid-validate'
-import {
-  fetchTaskByCompositionIdFromHearth,
-  getCertificatesFromTask
-} from '../fhir/service'
+import { fetchTaskByCompositionIdFromHearth } from '../fhir/service'
 
 function findRelatedPerson(
   patientCode:
