@@ -29,7 +29,6 @@ import {
 } from '@gateway/utils/validators'
 import {
   Bundle,
-  BundleEntry,
   Composition,
   EVENT_TYPE,
   Extension,
@@ -43,7 +42,7 @@ import {
   getStatusFromTask,
   getTaskFromBundle,
   isComposition,
-  isTask,
+  isTaskBundleEntry,
   resourceToBundleEntry,
   taskBundleWithExtension,
   updateFHIRTaskBundle
@@ -91,7 +90,7 @@ export const resolvers: GQLResolver = {
           new Error('User does not have a sysadmin scope')
         )
       }
-      const res = await fetchFHIR<Saved<Bundle<Composition>>>(
+      const res = await fetchFHIR<Saved<Bundle<Saved<Composition>>>>(
         `/Composition?date=gt${fromDate.toISOString()}&date=lte${toDate.toISOString()}&_count=0`,
         authHeader
       )
@@ -118,7 +117,7 @@ export const resolvers: GQLResolver = {
           new Error('User does not have a sysadmin scope')
         )
       }
-      const res = await fetchFHIR<Saved<Bundle<Composition>>>(
+      const res = await fetchFHIR<Saved<Bundle<Saved<Composition>>>>(
         `/Composition?date=gt${fromDate.toISOString()}&date=lte${toDate.toISOString()}&_count=0`,
         authHeader
       )
@@ -1039,9 +1038,7 @@ export async function markRecordAsDownloadedOrAssigned(
   authHeader: IAuthHeader
 ) {
   const record = await getRecordById(id, authHeader.Authorization)
-  const task = record.entry.find((entry) => isTask(entry.resource)) as Saved<
-    BundleEntry<Task>
-  >
+  const task = record.entry.find(isTaskBundleEntry)
 
   if (!task) {
     throw new Error('Task not found from record. This should never happen')
