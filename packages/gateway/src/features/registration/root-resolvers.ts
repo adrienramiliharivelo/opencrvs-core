@@ -10,7 +10,9 @@
  */
 import { IAuthHeader } from '@opencrvs/commons'
 
+import { AUTH_URL, COUNTRY_CONFIG_URL, SEARCH_URL } from '@gateway/constants'
 import { hasScope, inScope } from '@gateway/features/user/utils'
+import fetch from '@gateway/fetch'
 import {
   GQLBirthRegistrationInput,
   GQLDeathRegistrationInput,
@@ -19,10 +21,7 @@ import {
   GQLResolver,
   GQLStatusWiseRegistrationCount
 } from '@gateway/graphql/schema'
-import fetch from '@gateway/fetch'
-import { AUTH_URL, COUNTRY_CONFIG_URL, SEARCH_URL } from '@gateway/constants'
 import { UnassignError } from '@gateway/utils/unassignError'
-import { UserInputError } from 'apollo-server-hapi'
 import {
   validateBirthDeclarationAttachments,
   validateDeathDeclarationAttachments,
@@ -30,24 +29,27 @@ import {
 } from '@gateway/utils/validators'
 import {
   Bundle,
-  BundleEntry,
   Composition,
   EVENT_TYPE,
   Extension,
+  OPENCRVS_SPECIFICATION_URL,
   Patient,
   Saved,
   Task,
+  TaskStatus,
   buildFHIRBundle,
-  updateFHIRTaskBundle,
+  getComposition,
+  getStatusFromTask,
   getTaskFromBundle,
-  isTask,
+  isComposition,
+  isTaskBundleEntry,
   resourceToBundleEntry,
   taskBundleWithExtension,
-  OPENCRVS_SPECIFICATION_URL,
-  getStatusFromTask,
-  TaskStatus
+  updateFHIRTaskBundle
 } from '@opencrvs/commons/types'
+import { UserInputError } from 'apollo-server-hapi'
 
+import { checkUserAssignment } from '@gateway/authorisation'
 import {
   fetchFHIR,
   getCompositionIdFromResponse,
@@ -55,19 +57,13 @@ import {
   getDeclarationIdsFromResponse,
   getIDFromResponse
 } from '@gateway/features/fhir/service'
-import { checkUserAssignment } from '@gateway/authorisation'
+import { getRecordById } from '@gateway/records'
+import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
 import {
   removeDuplicatesFromComposition,
   setCertificateCollector,
   uploadBase64AttachmentsToDocumentsStore
 } from './utils'
-import {
-  hasBirthDuplicates,
-  hasDeathDuplicates
-} from '@gateway/features/search/service'
-import { getRecordById } from '@gateway/records'
-import { fhirBundleToOpenCRVSRecord } from '@gateway/records/fhir-to-opencrvs'
-import { createRequest } from '@gateway/workflow/index'
 
 async function getAnonymousToken() {
   const res = await fetch(new URL('/anonymous-token', AUTH_URL).toString())
@@ -94,7 +90,7 @@ export const resolvers: GQLResolver = {
           new Error('User does not have a sysadmin scope')
         )
       }
-      const res = await fetchFHIR<Saved<Bundle<Composition>>>(
+      const res = await fetchFHIR<Saved<Bundle<Saved<Composition>>>>(
         `/Composition?date=gt${fromDate.toISOString()}&date=lte${toDate.toISOString()}&_count=0`,
         authHeader
       )
@@ -121,7 +117,7 @@ export const resolvers: GQLResolver = {
           new Error('User does not have a sysadmin scope')
         )
       }
-      const res = await fetchFHIR<Saved<Bundle<Composition>>>(
+      const res = await fetchFHIR<Saved<Bundle<Saved<Composition>>>>(
         `/Composition?date=gt${fromDate.toISOString()}&date=lte${toDate.toISOString()}&_count=0`,
         authHeader
       )
@@ -159,12 +155,6 @@ export const resolvers: GQLResolver = {
         }
 
         context.record = record
-        console.log(
-          await fhirBundleToOpenCRVSRecord(
-            record,
-            context.headers.Authorization
-          )
-        )
 
         return record
       } else {
@@ -1030,9 +1020,7 @@ export async function markRecordAsDownloadedOrAssigned(
   authHeader: IAuthHeader
 ) {
   const record = await getRecordById(id, authHeader.Authorization)
-  const task = record.entry.find((entry) => isTask(entry.resource)) as Saved<
-    BundleEntry<Task>
-  >
+  const task = record.entry.find(isTaskBundleEntry)
 
   if (!task) {
     throw new Error('Task not found from record. This should never happen')

@@ -65,6 +65,7 @@ import {
   Saved,
   Task,
   TaskStatus,
+  URLReference,
   ValidRecord,
   WITNESS_ONE_CODE,
   WITNESS_TWO_CODE,
@@ -88,11 +89,9 @@ import {
   urlReferenceToUUID
 } from '@opencrvs/commons/types'
 
+import { Context } from '@gateway/graphql/context'
 import * as validateUUID from 'uuid-validate'
-import {
-  fetchTaskByCompositionIdFromHearth,
-  getCertificatesFromTask
-} from '../fhir/service'
+import { fetchTaskByCompositionIdFromHearth } from '../fhir/service'
 
 function findRelatedPerson(
   patientCode:
@@ -737,11 +736,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    informantsSignature: async (task, _, { headers: authHeader }) => {
+    informantsSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/informants-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -757,11 +765,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    groomSignature: async (task, _, { headers: authHeader }) => {
+    groomSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/groom-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -777,11 +794,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    brideSignature: async (task, _, { headers: authHeader }) => {
+    brideSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/bride-signature`,
         task.extension
       )
+
+      if (presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -797,11 +823,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    witnessOneSignature: async (task, _, { headers: authHeader }) => {
+    witnessOneSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/witness-one-signature`,
         task.extension
       )
+
+      if (presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -817,11 +852,20 @@ export const typeResolvers = {
       )
       return (contact && contact.valueString) || null
     },
-    witnessTwoSignature: async (task, _, { headers: authHeader }) => {
+    witnessTwoSignature: async (
+      task,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) => {
       const signatureExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/witness-two-signature`,
         task.extension
       )
+
+      if (!presignDocumentUrls) {
+        return signatureExtension && signatureExtension.valueString
+      }
+
       if (signatureExtension && signatureExtension.valueString) {
         return await getPresignedUrlFromUri(
           signatureExtension.valueString,
@@ -953,10 +997,7 @@ export const typeResolvers = {
         ))
       return duplicateData
     },
-    certificates: async (task, _, { headers: authHeader }) => {
-      // @todo get from bundle
-      return await getCertificatesFromTask(task, _, authHeader)
-    },
+    certificates: resolveCertificates,
     assignment: async (task, _, context) => {
       const assignmentExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regAssigned`,
@@ -1064,9 +1105,16 @@ export const typeResolvers = {
     id(docRef: DocumentReference) {
       return (docRef.masterIdentifier && docRef.masterIdentifier.value) || null
     },
-    async data(docRef: DocumentReference, _, { headers: authHeader }) {
+    async data(
+      docRef: DocumentReference,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) {
       const fileUri = docRef.content[0].attachment.data
       if (fileUri) {
+        if (!presignDocumentUrls) {
+          return fileUri
+        }
         return getPresignedUrlFromUri(fileUri, authHeader)
       }
       return null
@@ -1278,10 +1326,12 @@ export const typeResolvers = {
         date: paymentReconciliation.detail?.[0].date,
         attachmentURL:
           documentReference.length > 0
-            ? await getPresignedUrlFromUri(
-                documentReference[0].content[0].attachment.data!,
-                context.headers
-              )
+            ? context.presignDocumentUrls
+              ? await getPresignedUrlFromUri(
+                  documentReference[0].content[0].attachment.data!,
+                  context.headers
+                )
+              : documentReference[0].content[0].attachment.data!
             : null
       }
     },
@@ -1440,15 +1490,7 @@ export const typeResolvers = {
     comments: (task) => task.note || [],
     input: (task) => task.input || [],
     output: (task) => task.output || [],
-    certificates: async (task, _, { headers: authHeader }) => {
-      if (
-        getActionFromTask(task) ||
-        getStatusFromTask(task) !== TaskStatus.CERTIFIED
-      ) {
-        return null
-      }
-      return await getCertificatesFromTask(task, _, authHeader)
-    },
+    certificates: resolveCertificates,
     signature: async (task: Task, _: any, context) => {
       const action = getActionFromTask(task)
       const status = getStatusFromTask(task)
@@ -1932,3 +1974,23 @@ export const typeResolvers = {
     }
   }
 } satisfies GQLResolver
+
+async function resolveCertificates(
+  task: Saved<Task>,
+  _: unknown,
+  { dataSources }: Context
+) {
+  const compositionHistory = dataSources.fhirAPI.getCompositionHistory(
+    resourceIdentifierToUUID(task.focus.reference)
+  )
+  return compositionHistory.map((compositionEntry) => {
+    const certSection = findCompositionSection('certificates', compositionEntry)
+    if (!certSection || !certSection.entry || !(certSection.entry.length > 0)) {
+      return null
+    }
+
+    return dataSources.fhirAPI.getDocumentReference(
+      urlReferenceToUUID(certSection.entry[0].reference as URLReference)
+    )
+  })
+}

@@ -140,7 +140,7 @@ interface Location {
   partOf?: string
   type?: string
   telecom?: Array<ContactPoint | null>
-  address?: Address
+  address?: AddressInput
   longitude?: number
   latitude?: number
   altitude?: number
@@ -153,7 +153,7 @@ const enum AddressType {
   physical = 'physical',
   both = 'both'
 }
-export interface Address {
+export interface AddressInput {
   use?: EnumToStringUnion<typeof AddressUse>
   type?: EnumToStringUnion<typeof AddressType>
   text?: string
@@ -253,7 +253,7 @@ interface RelatedPerson {
   reasonNotApplying?: string
   dateOfMarriage?: DateString
   multipleBirth?: number
-  address?: Array<Address | null>
+  address?: Array<AddressInput | null>
   photo?: Array<Attachment>
   deceased?: Deceased
   nationality?: Array<string | null>
@@ -326,7 +326,7 @@ interface Person {
   reasonNotApplying?: string
   dateOfMarriage?: DateString
   multipleBirth?: number
-  address?: Array<Address | null>
+  address?: Array<AddressInput | null>
   photo?: Array<Attachment>
   deceased?: Deceased
   nationality?: Array<string | null>

@@ -432,7 +432,11 @@ export const searchTypeResolvers: GQLResolver = {
     }
   },
   AssignmentData: {
-    async avatarURL(assignmentData: IAssignment, _, { headers: authHeader }) {
+    async avatarURL(
+      assignmentData: IAssignment,
+      _,
+      { headers: authHeader, presignDocumentUrls }
+    ) {
       const response = await fetch(
         new URL(`users/${assignmentData.userId}/avatar`, USER_MANAGEMENT_URL),
         {
@@ -445,6 +449,9 @@ export const searchTypeResolvers: GQLResolver = {
       const { userName, avatarURI }: IAvatarResponse = await response.json()
 
       if (avatarURI) {
+        if (!presignDocumentUrls) {
+          return avatarURI
+        }
         const avatarURL = await getPresignedUrlFromUri(avatarURI, authHeader)
         return avatarURL
       }

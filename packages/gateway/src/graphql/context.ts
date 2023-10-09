@@ -24,6 +24,7 @@ import MetricsAPI from '@gateway/features/fhir/metricsAPI'
 export interface Context {
   request: Request
   record?: Saved<ValidRecord>
+  presignDocumentUrls?: boolean
   dataSources: {
     locationsAPI: LocationsAPI
     documentsAPI: DocumentsAPI
