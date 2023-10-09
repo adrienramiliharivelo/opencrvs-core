@@ -38,10 +38,8 @@ import {
   Task,
   TaskStatus,
   buildFHIRBundle,
-  getComposition,
   getStatusFromTask,
   getTaskFromBundle,
-  isComposition,
   isTaskBundleEntry,
   resourceToBundleEntry,
   taskBundleWithExtension,
@@ -58,12 +56,16 @@ import {
   getIDFromResponse
 } from '@gateway/features/fhir/service'
 import { getRecordById } from '@gateway/records'
-import { hasBirthDuplicates, hasDeathDuplicates } from '../search/service'
+import {
+  hasBirthDuplicates,
+  hasDeathDuplicates
+} from '@gateway/features/search/service'
 import {
   removeDuplicatesFromComposition,
   setCertificateCollector,
   uploadBase64AttachmentsToDocumentsStore
 } from './utils'
+import { createRequest } from '@gateway/workflow/index'
 
 async function getAnonymousToken() {
   const res = await fetch(new URL('/anonymous-token', AUTH_URL).toString())
