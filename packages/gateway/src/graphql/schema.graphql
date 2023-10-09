@@ -744,7 +744,6 @@ input BirthRegistrationInput {
   lastPreviousLiveBirth: Date
   createdAt: Date
   updatedAt: Date
-  duplicate: Boolean
 }
 
 input DeathRegistrationInput {
@@ -767,7 +766,6 @@ input DeathRegistrationInput {
   medicalPractitioner: MedicalPractitionerInput
   createdAt: Date
   updatedAt: Date
-  duplicate: Boolean
 }
 
 input MarriageRegistrationInput {
@@ -783,7 +781,6 @@ input MarriageRegistrationInput {
   questionnaire: [QuestionnaireQuestionInput]
   createdAt: Date
   updatedAt: Date
-  duplicate: Boolean
 }
 
 type CreatedIds {
