@@ -187,6 +187,8 @@ export async function generateAndSendVerificationCode(
   } else {
     verificationCode = await generateVerificationCode(nonce)
   }
+  console.log({ verificationCode })
+
   if (!PRODUCTION || QA_ENV) {
     logger.info(
       `Sending a verification to,
